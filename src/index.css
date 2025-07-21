@@ -1,3 +1,53 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 动画优化 - 防止错位和抖动 */
+@layer base {
+  /* 平滑的动画过渡 */
+  * {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* 确保动画不会导致布局移动 */
+  .animate-ping {
+    animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  /* 自定义平滑缩放动画 */
+  .hover\:scale-102:hover {
+    transform: scale(1.02);
+  }
+  
+  .hover\:scale-105:hover {
+    transform: scale(1.05);
+  }
+  
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+}
+
+/* PDF 查看器样式优化 */
+@layer components {
+  .rpv-core__viewer {
+    /* 确保PDF查看器容器正确定位 */
+    position: relative !important;
+    overflow: hidden !important;
+  }
+  
+  .rpv-default-layout__container {
+    /* 防止工具栏错位 */
+    position: relative !important;
+  }
+  
+  /* 按钮点击效果优化 */
+  button {
+    transform-origin: center;
+    will-change: transform;
+  }
+}

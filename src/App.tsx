@@ -117,7 +117,7 @@ const AppContent: React.FC = () => {
         </NavbarContent>
       </Navbar>
       <div className="flex flex-1 overflow-hidden p-4">
-        <Sidebar 
+          <Sidebar 
             orderInfo={orderInfo} 
             onOrderUpdate={handleOrderUpdate}
             fileList={fileList.map(file => file.name)}
@@ -129,7 +129,7 @@ const AppContent: React.FC = () => {
             showPDFPreview={showPDFPreview}
             onToggleView={() => setShowPDFPreview(!showPDFPreview)}
             canToggleView={fileList.length > 0}
-        />
+          />
         {fileList.length === 0 ? (
           <FileUpload onFileUploaded={handleFileUploaded} />
         ) : showPDFPreview ? (

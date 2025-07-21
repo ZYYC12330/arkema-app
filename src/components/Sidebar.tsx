@@ -183,9 +183,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Button 
                   color="secondary" 
                   size="lg" 
-                  className="flex-1 flex items-center justify-center gap-2"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg"
                   variant="bordered"
                   onPress={onToggleView}
+                  aria-label={showPDFPreview ? '切换到文件上传视图' : '切换到PDF预览视图'}
                 >
                   <Icon 
                     icon={showPDFPreview ? "lucide:upload" : "lucide:eye"} 
@@ -199,10 +200,11 @@ const Sidebar: React.FC<SidebarProps> = ({
               <Button 
                 color="primary" 
                 size="lg" 
-                className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 h-8 text-white rounded-lg`}
+                className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 h-8 rounded-lg text-white`}
                 onPress={onSubmit}
+                aria-label="提交当前文件的订单信息"
               >
-                <Icon icon="lucide:send" className="text-base" />
+                <Icon icon="lucide:send" className="text-base text-white" />
                 <span>{t.submit}</span>
               </Button>
             </div>

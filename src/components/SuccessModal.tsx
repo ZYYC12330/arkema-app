@@ -25,9 +25,9 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose, fileName }
       <ModalContent className="w-auto max-w-md">
         {(onCloseModal) => (
           <ModalBody className="p-8 text-center">
-            <div className="animate-bounce mb-4">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <Icon icon="lucide:check" className="text-3xl text-green-600" />
+            <div className="mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
+                <Icon icon="lucide:check" className="text-3xl text-green-600 animate-ping" />
               </div>
             </div>
             
@@ -52,7 +52,8 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose, fileName }
               <Button 
                 color="primary" 
                 onPress={onCloseModal}
-                className="animate-pulse"
+                className="transition-transform hover:scale-105 active:scale-95"
+                size="lg"
               >
                 <Icon icon="lucide:arrow-right" className="mr-2" />
                 {t.nextFile}

@@ -109,16 +109,26 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
           <div className="h-full flex flex-col items-center justify-center">
             <div
               className={`
-                w-full h-96 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors
+                w-full h-96 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer 
+                transition-all duration-300 ease-in-out transform
                 ${isDragOver 
-                  ? 'border-primary bg-primary/5' 
-                  : 'border-gray-300 hover:border-primary hover:bg-primary/5'
+                  ? 'border-primary bg-primary/5 scale-105' 
+                  : 'border-gray-300 hover:border-primary hover:bg-primary/5 hover:scale-102'
                 }
               `}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => document.getElementById('file-input')?.click()}
+              role="button"
+              tabIndex={0}
+              aria-label={t.uploadArea}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  document.getElementById('file-input')?.click();
+                }
+              }}
             >
               <Icon icon="lucide:cloud-upload" className="text-6xl text-gray-400 mb-4" />
               <p className="text-lg font-medium text-gray-700 mb-2">{t.uploadArea}</p>

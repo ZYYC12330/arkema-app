@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Viewer, Worker } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { Card, CardBody, Button, Progress, Spinner } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../contexts/LanguageContext';
+import FileConverter from '../utils/fileConverter';
 
 // 导入 CSS 样式
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -26,9 +27,56 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
 }) => {
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
+  const [convertedPdfUrl, setConvertedPdfUrl] = useState<string | null>(null);
   
+  // 文件转换效果
+  useEffect(() => {
+    const convertFile = async () => {
+      if (!file) {
+        setConvertedPdfUrl(null);
+        return;
+      }
+
+      const fileName = typeof file === 'string' ? file : file.name;
+      const fileUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
+      
+      // 检查是否需要转换
+      const fileType = FileConverter.getFileType(fileName);
+      
+      if (fileType === 'pdf') {
+        // 已经是PDF，直接使用
+        setConvertedPdfUrl(fileUrl);
+        return;
+      }
+      
+      if (fileType && ['jpg', 'jpeg', 'png', 'xls', 'xlsx'].includes(fileType)) {
+        setIsConverting(true);
+        setError(null);
+        
+        try {
+          const result = await FileConverter.convertToPdf(fileUrl, fileName);
+          
+          if (result.success && result.pdfUrl) {
+            setConvertedPdfUrl(result.pdfUrl);
+          } else {
+            setError(result.error || '文件转换失败');
+          }
+        } catch (error) {
+          setError(`转换过程中出错: ${error}`);
+        } finally {
+          setIsConverting(false);
+        }
+      } else {
+        setError('不支持的文件类型');
+      }
+    };
+
+    convertFile();
+  }, [file]);
+
   // 创建默认布局插件
   const defaultLayoutPluginInstance = defaultLayoutPlugin({
     sidebarTabs: (defaultTabs) => [
@@ -100,27 +148,37 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center">
                 <Icon icon="lucide:file-text" className="text-primary mr-2" />
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {file instanceof File ? file.name : '在线文档'}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    {file instanceof File && (
-                      <span>{formatFileSize(file.size)}</span>
-                    )}
-                    {numPages > 0 && (
-                      <span>{numPages} 页</span>
-                    )}
-                  </div>
-                </div>
+                                   <div>
+                     <p className="font-medium text-gray-900">
+                       {file instanceof File ? file.name : (typeof file === 'string' ? file.split('/').pop() : '在线文档')}
+                     </p>
+                     <div className="flex items-center gap-4 text-sm text-gray-500">
+                       {file instanceof File && (
+                         <span>{formatFileSize(file.size)}</span>
+                       )}
+                       {numPages > 0 && (
+                         <span>{numPages} 页</span>
+                       )}
+                       {file && (() => {
+                         const fileName = typeof file === 'string' ? file : file.name;
+                         const fileType = FileConverter.getFileType(fileName);
+                         if (fileType && fileType !== 'pdf') {
+                           return <span className="text-blue-600">已转换为 PDF</span>;
+                         }
+                         return null;
+                       })()}
+                     </div>
+                   </div>
               </div>
               
-              {isLoading && (
-                <div className="flex items-center gap-2">
-                  <Spinner size="sm" color="primary" />
-                  <span className="text-sm text-gray-600">加载中...</span>
-                </div>
-              )}
+                             {(isLoading || isConverting) && (
+                 <div className="flex items-center gap-2">
+                   <Spinner size="sm" color="primary" />
+                   <span className="text-sm text-gray-600">
+                     {isConverting ? '正在转换文件...' : '加载中...'}
+                   </span>
+                 </div>
+               )}
             </div>
           </div>
         )}
@@ -165,20 +223,20 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
             </div>
           ) : (
             // PDF 查看器
-            <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
-              <div style={{ height: '100%' }}>
-                <Viewer
-                  fileUrl={fileUrl}
-                  plugins={[defaultLayoutPluginInstance]}
-                  onDocumentLoad={handleDocumentLoad}
-                  onDocumentLoadError={handleDocumentError}
-                  onPageLoad={handlePageLoad}
-                  theme={{
-                    theme: 'light',
-                  }}
-                />
-              </div>
-            </Worker>
+                         <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+               <div style={{ height: '100%' }}>
+                 <Viewer
+                   fileUrl={convertedPdfUrl || fileUrl}
+                   plugins={[defaultLayoutPluginInstance]}
+                   onDocumentLoad={handleDocumentLoad}
+                   onDocumentLoadError={handleDocumentError}
+                   onPageLoad={handlePageLoad}
+                   theme={{
+                     theme: 'light',
+                   }}
+                 />
+               </div>
+             </Worker>
           )}
         </div>
       </CardBody>

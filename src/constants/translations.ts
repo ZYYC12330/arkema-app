@@ -2,7 +2,7 @@ import { TranslationTexts } from '../types';
 
 export const translations: Record<'zh' | 'en', TranslationTexts> = {
   zh: {
-    appTitle: 'PDF 提取器专业版',
+    appTitle: '自动创建 SAP 销售订单',
     extractedInfo: '提取的信息',
     soldToName: '买方名称',
     soldToAddress: '买方地址',
@@ -55,7 +55,7 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     loadError: '加载 PDF 文件失败',
   },
   en: {
-    appTitle: 'PDF Extractor Pro',
+    appTitle: 'Auto SAP Flow',
     extractedInfo: 'Extracted Information',
     soldToName: 'Sold-to Name',
     soldToAddress: 'Sold-to Address',

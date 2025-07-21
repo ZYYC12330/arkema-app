@@ -1,15 +1,15 @@
-// PDF 文件配置
+// 文件配置
 export interface FileInfo {
   id: string;
   name: string;
   url: string;
-  type: 'pdf' | 'doc' | 'docx' | 'xls' | 'xlsx';
+  type: 'pdf' | 'doc' | 'docx' | 'xls' | 'xlsx' | 'jpg' | 'jpeg' | 'png';
   size?: number; // 文件大小（字节）
   description?: string;
 }
 
-// 真实的PDF文件列表
-export const pdfFiles: FileInfo[] = [
+// 所有支持的文件列表
+export const allFiles: FileInfo[] = [
   {
     id: '1',
     name: '4593133614 TMCHMA Arkema.PDF',
@@ -87,20 +87,73 @@ export const pdfFiles: FileInfo[] = [
     url: '/documents/sample.pdf',
     type: 'pdf',
     description: '示例PDF文档'
+  },
+  
+  // 图片文件
+  {
+    id: '11',
+    name: '万尼贝尔.jpg',
+    url: '/src/data/万尼贝尔.jpg',
+    type: 'jpg',
+    description: '万尼贝尔产品图片'
+  },
+  {
+    id: '12',
+    name: '北京锐驰-1.PNG',
+    url: '/src/data/北京锐驰-1.PNG',
+    type: 'png',
+    description: '北京锐驰产品图片'
+  },
+  {
+    id: '13',
+    name: '安姆科-天彩.png',
+    url: '/src/data/安姆科-天彩.png',
+    type: 'png',
+    description: '安姆科天彩产品图片'
+  },
+  {
+    id: '14',
+    name: '广州安固得订单-波士胶25.03.07.jpg',
+    url: '/src/data/广州安固得订单-波士胶25.03.07.jpg',
+    type: 'jpg',
+    description: '广州安固得订单图片'
+  },
+  
+  // Excel文件
+  {
+    id: '15',
+    name: '江苏保均新材采购合同.xls',
+    url: '/src/data/江苏保均新材采购合同.xls',
+    type: 'xls',
+    description: '江苏保均新材采购合同'
+  },
+  {
+    id: '16',
+    name: '济南众畅1.xls',
+    url: '/src/data/济南众畅1.xls',
+    type: 'xls',
+    description: '济南众畅Excel文档'
+  },
+  {
+    id: '17',
+    name: '青岛金秋雨订单20250220亚鑫达.xlsx',
+    url: '/src/data/青岛金秋雨订单20250220亚鑫达.xlsx',
+    type: 'xlsx',
+    description: '青岛金秋雨订单Excel'
   }
 ];
 
 // 获取文件列表
 export const getFileList = (): FileInfo[] => {
-  return pdfFiles;
+  return allFiles;
 };
 
 // 根据ID获取文件信息
 export const getFileById = (id: string): FileInfo | undefined => {
-  return pdfFiles.find(file => file.id === id);
+  return allFiles.find(file => file.id === id);
 };
 
 // 根据文件名获取文件信息
 export const getFileByName = (name: string): FileInfo | undefined => {
-  return pdfFiles.find(file => file.name === name);
+  return allFiles.find(file => file.name === name);
 }; 
