@@ -1,0 +1,168 @@
+import React from 'react';
+import { Navbar, NavbarBrand, NavbarContent, Button } from "@heroui/react";
+import { Icon } from "@iconify/react";
+import Sidebar from './components/Sidebar';
+import PDFPreview from './components/PDFPreview';
+import FileUpload from './components/FileUpload';
+import SuccessModal from './components/SuccessModal';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { OrderInfo } from './types';
+
+const AppContent: React.FC = () => {
+  const { language, setLanguage, t } = useLanguage();
+  
+  // 从data目录动态获取文件列表
+  const [fileList] = React.useState<string[]>(() => {
+    try {
+      // 使用Vite的import.meta.glob获取data目录中的所有文件
+      const dataFiles = import.meta.glob('/src/data/*', { 
+        query: '?url', 
+        import: 'default',
+        eager: true 
+      });
+      
+      // 提取文件名（去掉路径前缀）并排序
+      const files = Object.keys(dataFiles)
+        .map(path => {
+          const fileName = path.split('/').pop() || '';
+          return fileName;
+        })
+        .filter(fileName => fileName !== '') // 过滤空文件名
+        .sort(); // 按字母顺序排序
+      
+      console.log('获取到的文件列表:', files);
+      return files;
+    } catch (error) {
+      console.error('获取文件列表失败:', error);
+      return []; // 返回空数组，避免应用崩溃
+    }
+  });
+
+  const [currentFileIndex, setCurrentFileIndex] = React.useState(0);
+  const [showSuccessModal, setShowSuccessModal] = React.useState(false);
+  
+  const [orderInfo, setOrderInfo] = React.useState<OrderInfo>({
+    id: '1',
+    soldToName: 'John Doe',
+    soldToAddress: '123 Main St, Anytown, USA 12345',
+    shipToName: 'Jane Smith',
+    shipToAddress: '456 Elm St, Other City, USA 67890',
+    vendorName: 'Acme Supplies',
+    vendorAddress: '789 Oak Rd, Supply Town, USA 54321',
+    soNumber: 'SO-2024-001',
+    poDate: '2024-01-15',
+    deliveryDate: '2024-02-01',
+    itemNumber: 'ITEM-001',
+    itemName: 'Chemical Product A',
+    itemQuantity: '100',
+    unitOfMeasure: 'KG',
+    unitPrice: '25.50',
+  });
+
+  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
+  const [showPDFPreview, setShowPDFPreview] = React.useState(false);
+
+  const handleOrderUpdate = (field: keyof OrderInfo, value: string) => {
+    setOrderInfo(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleFileUploaded = (file: File) => {
+    setUploadedFile(file);
+    setShowPDFPreview(true);
+    // 这里可以添加文件解析逻辑，提取订单信息
+    console.log('文件上传成功:', file.name);
+  };
+
+  const handleFileSelect = (fileName: string) => {
+    const index = fileList.findIndex(file => file === fileName);
+    if (index !== -1) {
+      setCurrentFileIndex(index);
+      // 模拟文件加载
+      setShowPDFPreview(true);
+      setUploadedFile(new File([], fileName));
+    }
+  };
+
+  const handleSubmit = () => {
+    // 显示成功弹窗
+    setShowSuccessModal(true);
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    // 自动跳转到下一个文件
+    if (currentFileIndex < fileList.length - 1) {
+      setCurrentFileIndex(prev => prev + 1);
+      const nextFileName = fileList[currentFileIndex + 1];
+      setUploadedFile(new File([], nextFileName));
+    } else {
+      // 所有文件处理完成
+      alert(t.allFilesCompleted);
+    }
+  };
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'zh' ? 'en' : 'zh');
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-background">
+      <Navbar isBordered className="border-b-1 bg-primary text-white">
+        <NavbarBrand>
+          <Icon icon="lucide:file-text" className="text-2xl mr-2 ml-4" />
+          <p className="font-bold text-inherit">{t.appTitle}</p>
+        </NavbarBrand>
+        <NavbarContent justify="end" className="pr-4">
+          <Button
+            size="sm"
+            color="secondary"
+            variant="flat"
+            onPress={toggleLanguage}
+            className="mr-2 flex items-center gap-1"
+          >
+            <Icon icon="lucide:globe" className="text-sm" />
+            <span>{language === 'zh' ? 'EN' : '中文'}</span>
+          </Button>
+        </NavbarContent>
+      </Navbar>
+      <div className="flex flex-1 overflow-hidden p-4">
+        <Sidebar 
+          orderInfo={orderInfo} 
+          onOrderUpdate={handleOrderUpdate}
+          fileList={fileList}
+          currentFile={fileList[currentFileIndex]}
+          onFileSelect={handleFileSelect}
+          onSubmit={handleSubmit}
+          currentFileIndex={currentFileIndex}
+          totalFiles={fileList.length}
+          showPDFPreview={showPDFPreview}
+          onToggleView={() => setShowPDFPreview(!showPDFPreview)}
+          canToggleView={fileList.length > 0}
+        />
+        {fileList.length === 0 ? (
+          <FileUpload onFileUploaded={handleFileUploaded} />
+        ) : showPDFPreview ? (
+          <PDFPreview uploadedFile={uploadedFile} />
+        ) : (
+          <FileUpload onFileUploaded={handleFileUploaded} />
+        )}
+      </div>
+      
+      <SuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={handleSuccessModalClose}
+        fileName={fileList[currentFileIndex]}
+      />
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
+  );
+};
+
+export default App;
