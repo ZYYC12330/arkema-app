@@ -7,29 +7,15 @@ import FileUpload from './components/FileUpload';
 import SuccessModal from './components/SuccessModal';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { OrderInfo } from './types';
+import { getFileList, getFileByName, FileInfo } from './config/files';
 
 const AppContent: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   
-  // 从data目录动态获取文件列表
-  const [fileList] = React.useState<string[]>(() => {
+  // 获取PDF文件列表
+  const [fileList] = React.useState<FileInfo[]>(() => {
     try {
-      // 使用Vite的import.meta.glob获取data目录中的所有文件
-      const dataFiles = import.meta.glob('/src/data/*', { 
-        query: '?url', 
-        import: 'default',
-        eager: true 
-      });
-      
-      // 提取文件名（去掉路径前缀）并排序
-      const files = Object.keys(dataFiles)
-        .map(path => {
-          const fileName = path.split('/').pop() || '';
-          return fileName;
-        })
-        .filter(fileName => fileName !== '') // 过滤空文件名
-        .sort(); // 按字母顺序排序
-      
+      const files = getFileList();
       console.log('获取到的文件列表:', files);
       return files;
     } catch (error) {
@@ -59,7 +45,7 @@ const AppContent: React.FC = () => {
     unitPrice: '25.50',
   });
 
-  const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
+  const [currentFileUrl, setCurrentFileUrl] = React.useState<string | null>(null);
   const [showPDFPreview, setShowPDFPreview] = React.useState(false);
 
   const handleOrderUpdate = (field: keyof OrderInfo, value: string) => {
@@ -67,19 +53,24 @@ const AppContent: React.FC = () => {
   };
 
   const handleFileUploaded = (file: File) => {
-    setUploadedFile(file);
+    const fileUrl = URL.createObjectURL(file);
+    setCurrentFileUrl(fileUrl);
     setShowPDFPreview(true);
     // 这里可以添加文件解析逻辑，提取订单信息
     console.log('文件上传成功:', file.name);
   };
 
   const handleFileSelect = (fileName: string) => {
-    const index = fileList.findIndex(file => file === fileName);
-    if (index !== -1) {
-      setCurrentFileIndex(index);
-      // 模拟文件加载
-      setShowPDFPreview(true);
-      setUploadedFile(new File([], fileName));
+    const fileInfo = getFileByName(fileName);
+    if (fileInfo) {
+      const index = fileList.findIndex(file => file.name === fileName);
+      if (index !== -1) {
+        setCurrentFileIndex(index);
+        // 使用真实的文件URL
+        setCurrentFileUrl(fileInfo.url);
+        setShowPDFPreview(true);
+        console.log('选择文件:', fileInfo.name, '-> URL:', fileInfo.url);
+      }
     }
   };
 
@@ -93,8 +84,8 @@ const AppContent: React.FC = () => {
     // 自动跳转到下一个文件
     if (currentFileIndex < fileList.length - 1) {
       setCurrentFileIndex(prev => prev + 1);
-      const nextFileName = fileList[currentFileIndex + 1];
-      setUploadedFile(new File([], nextFileName));
+      const nextFile = fileList[currentFileIndex + 1];
+      setCurrentFileUrl(nextFile.url);
     } else {
       // 所有文件处理完成
       alert(t.allFilesCompleted);
@@ -127,22 +118,22 @@ const AppContent: React.FC = () => {
       </Navbar>
       <div className="flex flex-1 overflow-hidden p-4">
         <Sidebar 
-          orderInfo={orderInfo} 
-          onOrderUpdate={handleOrderUpdate}
-          fileList={fileList}
-          currentFile={fileList[currentFileIndex]}
-          onFileSelect={handleFileSelect}
-          onSubmit={handleSubmit}
-          currentFileIndex={currentFileIndex}
-          totalFiles={fileList.length}
-          showPDFPreview={showPDFPreview}
-          onToggleView={() => setShowPDFPreview(!showPDFPreview)}
-          canToggleView={fileList.length > 0}
+            orderInfo={orderInfo} 
+            onOrderUpdate={handleOrderUpdate}
+            fileList={fileList.map(file => file.name)}
+            currentFile={fileList[currentFileIndex]?.name || ''}
+            onFileSelect={handleFileSelect}
+            onSubmit={handleSubmit}
+            currentFileIndex={currentFileIndex}
+            totalFiles={fileList.length}
+            showPDFPreview={showPDFPreview}
+            onToggleView={() => setShowPDFPreview(!showPDFPreview)}
+            canToggleView={fileList.length > 0}
         />
         {fileList.length === 0 ? (
           <FileUpload onFileUploaded={handleFileUploaded} />
         ) : showPDFPreview ? (
-          <PDFPreview uploadedFile={uploadedFile} />
+          <PDFPreview fileUrl={currentFileUrl} />
         ) : (
           <FileUpload onFileUploaded={handleFileUploaded} />
         )}
@@ -151,7 +142,7 @@ const AppContent: React.FC = () => {
       <SuccessModal 
         isOpen={showSuccessModal} 
         onClose={handleSuccessModalClose}
-        fileName={fileList[currentFileIndex]}
+        fileName={fileList[currentFileIndex]?.name || ''}
       />
     </div>
   );

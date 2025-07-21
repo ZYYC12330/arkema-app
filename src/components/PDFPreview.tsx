@@ -6,9 +6,10 @@ import PDFViewer from './PDFViewer';
 
 interface PDFPreviewProps {
   uploadedFile?: File | null;
+  fileUrl?: string | null;
 }
 
-const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile }) => {
+const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile, fileUrl }) => {
   const { t } = useLanguage();
 
   // 下载文件功能
@@ -22,6 +23,13 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile }) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+    } else if (fileUrl) {
+      const a = document.createElement('a');
+      a.href = fileUrl;
+      a.download = fileUrl.split('/').pop() || 'document.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   };
 
@@ -35,7 +43,7 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile }) => {
   
   return (
     <div className="flex-1 flex flex-col">
-      {/* 顶部工具栏 */}
+      {/* 顶部工具栏
       <Card className="mb-4 rounded-md shadow-md bg-white">
         <CardBody className="p-4">
           <div className="flex justify-between items-center">
@@ -49,9 +57,9 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile }) => {
                 color="primary" 
                 variant="flat" 
                 className="flex items-center gap-1"
-                onPress={handleDownload}
-                isDisabled={!uploadedFile}
-                aria-label="下载当前文档"
+                                 onPress={handleDownload}
+                 isDisabled={!uploadedFile && !fileUrl}
+                 aria-label="下载当前文档"
               >
                 <Icon icon="lucide:download" className="text-sm" />
                 <span>{t.download}</span>
@@ -59,40 +67,44 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile }) => {
             </div>
           </div>
 
-          {uploadedFile && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Icon icon="lucide:file" className="text-primary mr-2" />
-                  <div>
-                    <p className="font-medium text-gray-900">{uploadedFile.name}</p>
-                    <p className="text-sm text-gray-500">{formatFileSize(uploadedFile.size)}</p>
-                  </div>
-                </div>
-                <Chip color="success" variant="flat">
-                  {t.uploadSuccess}
-                </Chip>
-              </div>
-            </div>
-          )}
+                     {(uploadedFile || fileUrl) && (
+             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center">
+                   <Icon icon="lucide:file" className="text-primary mr-2" />
+                   <div>
+                     <p className="font-medium text-gray-900">
+                       {uploadedFile?.name || fileUrl?.split('/').pop() || '文档'}
+                     </p>
+                     {uploadedFile && (
+                       <p className="text-sm text-gray-500">{formatFileSize(uploadedFile.size)}</p>
+                     )}
+                   </div>
+                 </div>
+                 <Chip color="success" variant="flat">
+                   {t.uploadSuccess}
+                 </Chip>
+               </div>
+             </div>
+           )}
         </CardBody>
-      </Card>
+      </Card> */}
 
       {/* PDF 查看器 */}
       <div className="flex-1">
-        <PDFViewer 
-          file={uploadedFile}
-          height="calc(100vh - 200px)"
-          onLoadSuccess={(numPages) => {
-            console.log(`PDF 加载成功，共 ${numPages} 页`);
-          }}
-          onLoadError={(error) => {
-            console.error('PDF 加载失败:', error);
-          }}
-        />
+                 <PDFViewer 
+           file={uploadedFile || fileUrl}
+           height="calc(100vh - 200px)"
+           onLoadSuccess={(numPages) => {
+             console.log(`PDF 加载成功，共 ${numPages} 页`);
+           }}
+           onLoadError={(error) => {
+             console.error('PDF 加载失败:', error);
+           }}
+         />
       </div>
     </div>
   );
 };
 
-export default PDFPreview;
+export default PDFPreview;0

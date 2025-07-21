@@ -199,7 +199,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <Button 
                 color="primary" 
                 size="lg" 
-                className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 text-white`}
+                className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 h-8 text-white rounded-lg`}
                 onPress={onSubmit}
               >
                 <Icon icon="lucide:send" className="text-base" />
