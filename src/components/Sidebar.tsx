@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardBody, Input, Button, Divider, Select, SelectItem, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../contexts/LanguageContext';
@@ -32,6 +32,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   canToggleView = false
 }) => {
   const { t } = useLanguage();
+  const [viewMode, setViewMode] = useState<'edit' | 'verification'>('edit');
 
   const renderInputField = (
     field: keyof OrderInfo,
@@ -51,7 +52,28 @@ const Sidebar: React.FC<SidebarProps> = ({
         placeholder={`${t.edit} ${label}`}
         className="w-full"
         size="sm"
+        isDisabled={viewMode === 'verification'}
       />
+    </div>
+  );
+
+  const renderDisplayField = (
+    field: keyof OrderInfo,
+    label: string,
+    icon: string
+  ) => (
+    <div className="mb-4">
+      <label className="text-sm font-medium text-gray-700 mb-1 flex items-center">
+        <Icon icon={icon} className="mr-2 text-primary" />
+        {label}
+      </label>
+      <div className={`p-2 border rounded-md min-h-[32px] text-sm transition-all duration-500 ${
+        viewMode === 'verification' 
+          ? 'bg-primary/10 border-primary' 
+          : 'bg-gray-50 border-gray-200'
+      }`}>
+        {orderInfo[field] || '-'}
+      </div>
     </div>
   );
 
@@ -66,18 +88,44 @@ const Sidebar: React.FC<SidebarProps> = ({
     </div>
   );
 
+  const renderFieldForMode = (
+    field: keyof OrderInfo,
+    label: string,
+    icon: string,
+    type: string = 'text'
+  ) => {
+    return viewMode === 'edit' 
+      ? renderInputField(field, label, icon, type)
+      : renderDisplayField(field, label, icon);
+  };
+
+  const handleNextStep = () => {
+    setViewMode('verification');
+  };
+
+  const handleBackToEdit = () => {
+    setViewMode('edit');
+  };
+
+  const handleConfirmSubmit = () => {
+    if (onSubmit) {
+      onSubmit();
+    }
+    setViewMode('edit'); // 提交后重置为编辑模式
+  };
+
   return (
     <Card className="w-1/3 h-full rounded-md shadow-md mr-4 bg-white overflow-y-auto">
       <CardBody className="p-6 flex flex-col">
         <h2 className="text-xl font-bold mb-6 text-primary flex items-center">
-          <Icon icon="lucide:clipboard-list" className="mr-2" />
-          {t.extractedInfo}
+          <Icon icon={viewMode === 'edit' ? "lucide:clipboard-list" : "lucide:check-circle"} className="mr-2" />
+          {viewMode === 'edit' ? t.extractedInfo : t.verification}
         </h2>
 
         {/* 文件选择下拉框 */}
         {fileList.length > 0 && (
           <div className="mb-6">
-            <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+            <label id="file-select-label" className="text-sm font-medium text-gray-700 mb-2 flex items-center">
               <Icon icon="lucide:file-search" className="mr-2 text-primary" />
               {t.currentFile}
             </label>
@@ -91,6 +139,9 @@ const Sidebar: React.FC<SidebarProps> = ({
               }}
               placeholder={t.selectFile2}
               className="w-full"
+              isDisabled={viewMode === 'verification'}
+              aria-labelledby="file-select-label"
+              aria-label={t.selectFile2}
               classNames={{
                 trigger: "bg-gray-50 border-gray-200 hover:bg-gray-100 flex items-center justify-between h-10",
                 value: "flex items-center gap-2",
@@ -140,12 +191,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           t.addressInfo,
           'lucide:map-pin',
           <>
-            {renderInputField('soldToName', t.soldToName, 'lucide:user')}
-            {renderInputField('soldToAddress', t.soldToAddress, 'lucide:home')}
-            {renderInputField('shipToName', t.shipToName, 'lucide:truck')}
-            {renderInputField('shipToAddress', t.shipToAddress, 'lucide:map')}
-            {renderInputField('vendorName', t.vendorName, 'lucide:briefcase')}
-            {renderInputField('vendorAddress', t.vendorAddress, 'lucide:building')}
+            {renderFieldForMode('soldToName', t.soldToName, 'lucide:user')}
+            {renderFieldForMode('soldToAddress', t.soldToAddress, 'lucide:home')}
+            {renderFieldForMode('arkemaSoldToCode', t.arkemaSoldToCode, 'lucide:code')}
+            {renderFieldForMode('shipToName', t.shipToName, 'lucide:truck')}
+            {renderFieldForMode('shipToAddress', t.shipToAddress, 'lucide:map')}
+            {renderFieldForMode('arkemaShipToCode', t.arkemaShipToCode, 'lucide:code')}
+            {renderFieldForMode('vendorName', t.vendorName, 'lucide:briefcase')}
+            {renderFieldForMode('vendorAddress', t.vendorAddress, 'lucide:building')}
+            {renderFieldForMode('vendorSalesArea', t.vendorSalesArea, 'lucide:globe')}
           </>
         )}
 
@@ -154,9 +208,10 @@ const Sidebar: React.FC<SidebarProps> = ({
           t.orderInfo,
           'lucide:file-text',
           <>
-            {renderInputField('soNumber', t.soNumber, 'lucide:hash')}
-            {renderInputField('poDate', t.poDate, 'lucide:calendar', 'date')}
-            {renderInputField('deliveryDate', t.deliveryDate, 'lucide:clock', 'date')}
+            {renderFieldForMode('poNumber', t.poNumber, 'lucide:hash')}
+            {renderFieldForMode('poDate', t.poDate, 'lucide:calendar', 'date')}
+            {renderFieldForMode('deliveryDate', t.deliveryDate, 'lucide:clock', 'date')}
+            {renderFieldForMode('deliveryByDate', t.deliveryByDate, 'lucide:clock', 'date')}
           </>
         )}
 
@@ -165,21 +220,23 @@ const Sidebar: React.FC<SidebarProps> = ({
            t.itemInfo,
            'lucide:package',
            <>
-             {renderInputField('itemNumber', t.itemNumber, 'lucide:barcode')}
-             {renderInputField('itemName', t.itemName, 'lucide:tag')}
-             {renderInputField('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
-             {renderInputField('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
-             {renderInputField('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
+             {renderFieldForMode('lineNumber', t.lineNumber, 'lucide:list-ordered')}
+             {renderFieldForMode('itemNumber', t.itemNumber, 'lucide:barcode')}
+             {renderFieldForMode('itemName', t.itemName, 'lucide:tag')}
+             {renderFieldForMode('arkemaProductCode', t.arkemaProductCode, 'lucide:code')}
+             {renderFieldForMode('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
+             {renderFieldForMode('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
+             {renderFieldForMode('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
            </>
          )}
         </div>
 
-        {/* 提交按钮 */}
+        {/* 按钮区域 */}
         {onSubmit && (
           <div className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex gap-3">
               {/* 切换视图按钮 */}
-              {canToggleView && onToggleView && (
+              {canToggleView && onToggleView && viewMode === 'edit' && (
                 <Button 
                   color="secondary" 
                   size="lg" 
@@ -196,17 +253,46 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Button>
               )}
               
-              {/* 提交按钮 */}
-              <Button 
-                color="primary" 
-                size="lg" 
-                className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 h-8 rounded-lg text-white`}
-                onPress={onSubmit}
-                aria-label="提交当前文件的订单信息"
-              >
-                <Icon icon="lucide:send" className="text-base text-white" />
-                <span>{t.submit}</span>
-              </Button>
+              {/* 编辑模式按钮 */}
+              {viewMode === 'edit' && (
+                <Button 
+                  color="primary" 
+                  size="lg" 
+                  className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 h-8 rounded-lg text-white`}
+                  onPress={handleNextStep}
+                  aria-label="进入核对界面"
+                >
+                  <Icon icon="lucide:arrow-right" className="text-base text-white" />
+                  <span>{t.nextStep}</span>
+                </Button>
+              )}
+
+              {/* 核对模式按钮 */}
+              {viewMode === 'verification' && (
+                <>
+                  <Button 
+                    color="secondary" 
+                    size="lg" 
+                    className="flex-1 flex items-center justify-center gap-2 rounded-lg"
+                    variant="bordered"
+                    onPress={handleBackToEdit}
+                    aria-label="返回编辑界面"
+                  >
+                    <Icon icon="lucide:arrow-left" className="text-base" />
+                    <span>{t.backToEdit}</span>
+                  </Button>
+                  <Button 
+                    color="primary" 
+                    size="lg" 
+                    className="flex-1 flex items-center justify-center gap-2 h-8 rounded-lg text-white"
+                    onPress={handleConfirmSubmit}
+                    aria-label="确认提交订单信息"
+                  >
+                    <Icon icon="lucide:check" className="text-base text-white" />
+                    <span>{t.confirmSubmit}</span>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         )}

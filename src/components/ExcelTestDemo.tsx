@@ -79,7 +79,7 @@ const ExcelTestDemo: React.FC = () => {
 
             {/* Excel文件选择 */}
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label id="excel-select-label" className="block text-sm font-medium text-gray-700 mb-2">
                 选择Excel文件进行测试：
               </label>
               <Select
@@ -90,6 +90,8 @@ const ExcelTestDemo: React.FC = () => {
                   handleFileSelect(selected);
                 }}
                 className="max-w-md"
+                aria-labelledby="excel-select-label"
+                aria-label="选择Excel文件进行测试"
               >
                 {excelFiles.map((file) => (
                   <SelectItem key={file.id} value={file.id}>

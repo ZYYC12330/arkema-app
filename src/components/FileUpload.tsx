@@ -3,8 +3,24 @@ import { Card, CardBody, Button, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../contexts/LanguageContext';
 
+// API 配置
+const API_CONFIG = {
+  baseUrl: 'https://demo.langcore.net',
+  uploadEndpoint: '/api/file',
+  authToken: 'sk-zzvwbcaxoss3'
+};
+
 interface FileUploadProps {
-  onFileUploaded: (file: File) => void;
+  onFileUploaded: (file: File, fileInfo?: { fileId?: string; url?: string }) => void;
+}
+
+interface UploadResponse {
+  data?: {
+    fileId?: string;
+    url?: string;
+  };
+  success?: boolean;
+  msg?: string;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
@@ -12,6 +28,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -43,47 +60,114 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     }
   }, []);
 
+  const uploadFileToServer = async (file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const uploadUrl = `${API_CONFIG.baseUrl}${API_CONFIG.uploadEndpoint}`;
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // 设置上传进度监听
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          onProgress(progress);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        try {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const response: UploadResponse = JSON.parse(xhr.responseText);
+            resolve(response);
+          } else {
+            reject(new Error(`上传失败: HTTP ${xhr.status}`));
+          }
+        } catch (error) {
+          reject(new Error('解析响应失败'));
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('网络错误'));
+      });
+
+      xhr.addEventListener('timeout', () => {
+        reject(new Error('上传超时'));
+      });
+
+      xhr.open('POST', uploadUrl);
+      xhr.setRequestHeader('Authorization', `Bearer ${API_CONFIG.authToken}`);
+      xhr.timeout = 60000; // 60秒超时
+
+      xhr.send(formData);
+    });
+  };
+
   const handleFileUpload = async (file: File) => {
-    // 检查文件类型
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    // 检查文件类型 - 扩展支持更多格式
+    const allowedTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'image/jpeg',
+      'image/jpg',
+      'image/png'
+    ];
+    
     if (!allowedTypes.includes(file.type)) {
-      alert('不支持的文件格式，请上传 PDF、DOC 或 DOCX 文件');
+      const message = '不支持的文件格式，请上传 PDF、DOC、DOCX、XLS、XLSX 或图片文件';
+      alert(message);
+      setUploadError(message);
       return;
     }
 
     // 检查文件大小 (10MB)
     if (file.size > 10 * 1024 * 1024) {
-      alert('文件太大，请选择小于 10MB 的文件');
+      const message = '文件太大，请选择小于 10MB 的文件';
+      alert(message);
+      setUploadError(message);
       return;
     }
 
     setIsUploading(true);
     setUploadProgress(0);
-
-    // 模拟上传进度
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 90) {
-          clearInterval(progressInterval);
-          return 90;
-        }
-        return prev + 10;
-      });
-    }, 100);
+    setUploadError(null);
 
     try {
-      // 模拟文件上传延迟
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('开始上传文件:', file.name, '大小:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
       
-      setUploadProgress(100);
-      setTimeout(() => {
-        setIsUploading(false);
-        onFileUploaded(file);
-      }, 500);
+      const response = await uploadFileToServer(file, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      console.log('上传响应:', response);
+
+      if (response.data?.fileId) {
+        // 上传成功
+        setUploadProgress(100);
+        setTimeout(() => {
+          setIsUploading(false);
+          onFileUploaded(file, {
+            fileId: response.data?.fileId,
+            url: response.data?.url
+          });
+          console.log('文件上传成功，FileId:', response.data?.fileId);
+        }, 500);
+      } else {
+        throw new Error(response.msg || '上传失败，未返回文件ID');
+      }
     } catch (error) {
+      console.error('文件上传失败:', error);
       setIsUploading(false);
       setUploadProgress(0);
-      alert(t.uploadError);
+      const errorMessage = error instanceof Error ? error.message : '上传失败，请重试';
+      setUploadError(errorMessage);
+      alert(errorMessage);
     }
   };
 
@@ -107,6 +191,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
 
         {!isUploading ? (
           <div className="h-full flex flex-col items-center justify-center">
+            {uploadError && (
+              <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <div className="flex items-center">
+                  <Icon icon="lucide:alert-circle" className="text-red-500 mr-2" />
+                  <p className="text-red-700 text-sm">{uploadError}</p>
+                </div>
+              </div>
+            )}
+            
             <div
               className={`
                 w-full h-96 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer 
@@ -142,21 +235,21 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
             <input
               id="file-input"
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
               onChange={handleFileSelect}
               className="hidden"
               aria-label={t.selectFile}
             />
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600 mb-2">{t.supportedFormats}</p>
-              <p className="text-sm text-gray-500">{t.maxFileSize}</p>
+              <p className="text-sm text-gray-600 mb-2">支持格式: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
+              <p className="text-sm text-gray-500">最大文件大小: 10MB</p>
             </div>
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center">
-            <Icon icon="lucide:file-check" className="text-6xl text-primary mb-4" />
-            <h3 className="text-lg font-medium text-gray-700 mb-4">{t.processing}</h3>
+            <Icon icon="lucide:upload-cloud" className="text-6xl text-primary mb-4" />
+            <h3 className="text-lg font-medium text-gray-700 mb-4">正在上传文件...</h3>
             <div className="w-full max-w-md">
               <Progress 
                 value={uploadProgress} 
@@ -165,7 +258,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
                 showValueLabel={true}
               />
             </div>
-            <p className="text-sm text-gray-600">{uploadProgress}% {t.processing}</p>
+            <p className="text-sm text-gray-600">{uploadProgress}% 已完成</p>
           </div>
         )}
       </CardBody>

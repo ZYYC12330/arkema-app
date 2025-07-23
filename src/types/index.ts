@@ -7,7 +7,7 @@ export interface OrderInfo {
   shipToAddress: string;
   vendorName: string;
   vendorAddress: string;
-  soNumber: string;
+  poNumber: string;
   poDate: string;
   deliveryDate: string;
   itemNumber: string;
@@ -15,6 +15,13 @@ export interface OrderInfo {
   itemQuantity: string;
   unitOfMeasure: string;
   unitPrice: string;
+  // 新增字段
+  arkemaSoldToCode: string;
+  arkemaShipToCode: string;
+  vendorSalesArea: string;
+  deliveryByDate: string;
+  lineNumber: string;
+  arkemaProductCode: string;
 }
 
 // 语言类型
@@ -30,7 +37,7 @@ export interface TranslationTexts {
   shipToAddress: string;
   vendorName: string;
   vendorAddress: string;
-  soNumber: string;
+  poNumber: string;
   poDate: string;
   deliveryDate: string;
   itemNumber: string;
@@ -38,6 +45,18 @@ export interface TranslationTexts {
   itemQuantity: string;
   unitOfMeasure: string;
   unitPrice: string;
+  // 新增字段翻译
+  arkemaSoldToCode: string;
+  arkemaShipToCode: string;
+  vendorSalesArea: string;
+  deliveryByDate: string;
+  lineNumber: string;
+  arkemaProductCode: string;
+  // 界面状态翻译
+  nextStep: string;
+  verification: string;
+  backToEdit: string;
+  confirmSubmit: string;
   pdfPreview: string;
   zoomIn: string;
   zoomOut: string;
