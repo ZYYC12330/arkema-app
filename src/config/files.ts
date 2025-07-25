@@ -8,152 +8,94 @@ export interface FileInfo {
   description?: string;
 }
 
-// 所有支持的文件列表
-export const allFiles: FileInfo[] = [
-  {
-    id: '1',
-    name: '4593133614 TMCHMA Arkema.PDF',
-    url: '/src/data/4593133614 TMCHMA Arkema.PDF',
-    type: 'pdf',
-    description: 'Arkema TMCHMA 产品文档'
-  },
-  {
-    id: '2', 
-    name: 'PO 4500336692.pdf',
-    url: '/src/data/PO 4500336692.pdf',
-    type: 'pdf',
-    description: '采购订单文档'
-  },
-  {
-    id: '3',
-    name: 'SEPL-ACL-052.pdf', 
-    url: '/src/data/SEPL-ACL-052.pdf',
-    type: 'pdf',
-    description: 'SEPL ACL 文档'
-  },
-  {
-    id: '4',
-    name: 'YYBST003E.pdf',
-    url: '/src/data/YYBST003E.pdf', 
-    type: 'pdf',
-    description: 'YYBST 产品文档'
-  },
-  {
-    id: '5',
-    name: '上海皓憬 Cleaner C8产品订货单0321.pdf',
-    url: '/src/data/上海皓憬 Cleaner C8产品订货单0321.pdf',
-    type: 'pdf',
-    description: '上海皓憬订货单'
-  },
-  {
-    id: '6', 
-    name: '北京伟捷--订货单-20250325-013.pdf',
-    url: '/src/data/北京伟捷--订货单-20250325-013.pdf',
-    type: 'pdf',
-    description: '北京伟捷订货单'
-  },
-  {
-    id: '7',
-    name: '北京宇鑫1.pdf',
-    url: '/src/data/北京宇鑫1.pdf',
-    type: 'pdf', 
-    description: '北京宇鑫文档'
-  },
-  {
-    id: '8',
-    name: '扫描0499.pdf',
-    url: '/src/data/扫描0499.pdf',
-    type: 'pdf',
-    description: '扫描文档'
-  },
-  {
-    id: '9',
-    name: '採購單號_2100000903_20250423_093808阿科瑪.pdf',
-    url: '/src/data/採購單號_2100000903_20250423_093808阿科瑪.pdf', 
-    type: 'pdf',
-    description: '阿科瑪采购单'
-  },
-  {
-    id: '10',
-    name: '科创达3.pdf',
-    url: '/src/data/科创达3.pdf',
-    type: 'pdf',
-    description: '科创达文档'
-  },
-  // 示例PDF文件（放在public目录）
-  {
-    id: 'sample',
-    name: 'sample.pdf',
-    url: '/documents/sample.pdf',
-    type: 'pdf',
-    description: '示例PDF文档'
-  },
-  
-  // 图片文件
-  {
-    id: '11',
-    name: '万尼贝尔.jpg',
-    url: '/src/data/万尼贝尔.jpg',
-    type: 'jpg',
-    description: '万尼贝尔产品图片'
-  },
-  {
-    id: '12',
-    name: '北京锐驰-1.PNG',
-    url: '/src/data/北京锐驰-1.PNG',
-    type: 'png',
-    description: '北京锐驰产品图片'
-  },
-  {
-    id: '13',
-    name: '安姆科-天彩.png',
-    url: '/src/data/安姆科-天彩.png',
-    type: 'png',
-    description: '安姆科天彩产品图片'
-  },
-  {
-    id: '14',
-    name: '广州安固得订单-波士胶25.03.07.jpg',
-    url: '/src/data/广州安固得订单-波士胶25.03.07.jpg',
-    type: 'jpg',
-    description: '广州安固得订单图片'
-  },
-  
-  // Excel文件
-  {
-    id: '15',
-    name: '江苏保均新材采购合同.xls',
-    url: '/src/data/江苏保均新材采购合同.xls',
-    type: 'xls',
-    description: '江苏保均新材采购合同'
-  },
-  {
-    id: '16',
-    name: '济南众畅1.xls',
-    url: '/src/data/济南众畅1.xls',
-    type: 'xls',
-    description: '济南众畅Excel文档'
-  },
-  {
-    id: '17',
-    name: '青岛金秋雨订单20250220亚鑫达.xlsx',
-    url: '/src/data/青岛金秋雨订单20250220亚鑫达.xlsx',
-    type: 'xlsx',
-    description: '青岛金秋雨订单Excel'
+// 支持的文件类型映射
+const FILE_TYPE_MAP: Record<string, FileInfo['type']> = {
+  'pdf': 'pdf',
+  'doc': 'doc',
+  'docx': 'docx',
+  'xls': 'xls',
+  'xlsx': 'xlsx',
+  'jpg': 'jpg',
+  'jpeg': 'jpeg',
+  'png': 'png'
+};
+
+/**
+ * 动态获取文件列表
+ * 从 public/documents 目录扫描文件
+ */
+export const getFileList = async (): Promise<FileInfo[]> => {
+  try {
+    // 获取 documents 目录下的文件列表
+    const response = await fetch('/api/files');
+    
+    if (!response.ok) {
+      throw new Error(`获取文件列表失败: ${response.statusText}`);
+    }
+    
+    const files = await response.json();
+    
+    // 过滤支持的文件类型并转换为 FileInfo 格式
+    return files
+      .filter((file: any) => {
+        const extension = file.name.toLowerCase().split('.').pop();
+        return FILE_TYPE_MAP[extension];
+      })
+      .map((file: any, index: number) => {
+        const extension = file.name.toLowerCase().split('.').pop();
+        return {
+          id: String(index + 1),
+          name: file.name,
+          url: `/documents/${file.name}`,
+          type: FILE_TYPE_MAP[extension],
+          size: file.size,
+          description: getFileDescription(file.name)
+        };
+      });
+  } catch (error) {
+    console.error('动态获取文件列表失败:', error);
+    // 如果动态获取失败，返回空数组
+    return [];
   }
-];
-
-// 获取文件列表
-export const getFileList = (): FileInfo[] => {
-  return allFiles;
 };
 
-// 根据ID获取文件信息
-export const getFileById = (id: string): FileInfo | undefined => {
-  return allFiles.find(file => file.id === id);
+/**
+ * 根据文件名生成描述
+ */
+const getFileDescription = (fileName: string): string => {
+  const name = fileName.toLowerCase();
+  
+  if (name.includes('arkema')) return 'Arkema 相关文档';
+  if (name.includes('订单') || name.includes('order')) return '订单文档';
+  if (name.includes('采购') || name.includes('purchase')) return '采购文档';
+  if (name.includes('合同') || name.includes('contract')) return '合同文档';
+  if (name.includes('产品') || name.includes('product')) return '产品文档';
+  
+  // 根据文件类型返回默认描述
+  const extension = fileName.toLowerCase().split('.').pop();
+  switch (extension) {
+    case 'pdf': return 'PDF 文档';
+    case 'xls':
+    case 'xlsx': return 'Excel 表格';
+    case 'jpg':
+    case 'jpeg':
+    case 'png': return '图片文件';
+    default: return '文档文件';
+  }
 };
 
-// 根据文件名获取文件信息
-export const getFileByName = (name: string): FileInfo | undefined => {
-  return allFiles.find(file => file.name === name);
-}; 
+/**
+ * 根据ID获取文件信息
+ */
+export const getFileById = async (id: string): Promise<FileInfo | undefined> => {
+  const files = await getFileList();
+  return files.find(file => file.id === id);
+};
+
+/**
+ * 根据文件名获取文件信息
+ */
+export const getFileByName = async (name: string): Promise<FileInfo | undefined> => {
+  const files = await getFileList();
+  return files.find(file => file.name === name);
+};

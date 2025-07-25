@@ -43,56 +43,9 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile, fileUrl }) => {
   
   return (
     <div className="flex-1 flex flex-col">
-      {/* 顶部工具栏
-      <Card className="mb-4 rounded-md shadow-md bg-white">
-        <CardBody className="p-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold text-primary flex items-center">
-              <Icon icon="lucide:file-text" className="mr-2" />
-              {t.pdfPreview}
-            </h2>
-            <div className="flex space-x-2">
-              <Button 
-                size="sm" 
-                color="primary" 
-                variant="flat" 
-                className="flex items-center gap-1"
-                                 onPress={handleDownload}
-                 isDisabled={!uploadedFile && !fileUrl}
-                 aria-label="下载当前文档"
-              >
-                <Icon icon="lucide:download" className="text-sm" />
-                <span>{t.download}</span>
-              </Button>
-            </div>
-          </div>
-
-                     {(uploadedFile || fileUrl) && (
-             <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-               <div className="flex items-center justify-between">
-                 <div className="flex items-center">
-                   <Icon icon="lucide:file" className="text-primary mr-2" />
-                   <div>
-                     <p className="font-medium text-gray-900">
-                       {uploadedFile?.name || fileUrl?.split('/').pop() || '文档'}
-                     </p>
-                     {uploadedFile && (
-                       <p className="text-sm text-gray-500">{formatFileSize(uploadedFile.size)}</p>
-                     )}
-                   </div>
-                 </div>
-                 <Chip color="success" variant="flat">
-                   {t.uploadSuccess}
-                 </Chip>
-               </div>
-             </div>
-           )}
-        </CardBody>
-      </Card> */}
-
       {/* PDF 查看器 */}
       <div className="flex-1">
-                 <PDFViewer 
+        <PDFViewer 
            file={uploadedFile || fileUrl}
            height="calc(100vh - 200px)"
            onLoadSuccess={(numPages) => {
@@ -101,7 +54,7 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile, fileUrl }) => {
            onLoadError={(error) => {
              console.error('PDF 加载失败:', error);
            }}
-         />
+        />
       </div>
     </div>
   );

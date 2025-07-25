@@ -16,6 +16,7 @@ interface SidebarProps {
   showPDFPreview?: boolean;
   onToggleView?: () => void;
   canToggleView?: boolean;
+  isLoading?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
@@ -25,11 +26,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   currentFile = '', 
   onFileSelect, 
   onSubmit,
-  currentFileIndex = 0,
+  currentFileIndex = -1,
   totalFiles = 0,
   showPDFPreview = false,
   onToggleView,
-  canToggleView = false
+  canToggleView = false,
+  isLoading = false,
 }) => {
   const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<'edit' | 'verification'>('edit');
@@ -40,19 +42,25 @@ const Sidebar: React.FC<SidebarProps> = ({
     icon: string,
     type: string = 'text'
   ) => (
-    <div className="mb-4">
+    <div className="mb-4 relative">
       <label className="text-sm font-medium text-gray-700 mb-1 flex items-center">
         <Icon icon={icon} className="mr-2 text-primary" />
         {label}
       </label>
       <Input
         type={type}
-        value={orderInfo[field]}
+        value={isLoading ? '' : orderInfo[field]}
         onChange={(e) => onOrderUpdate(field, e.target.value)}
-        placeholder={`${t.edit} ${label}`}
+        placeholder={isLoading ? "正在提取..." : `${t.edit} ${label}`}
         className="w-full"
         size="sm"
-        isDisabled={viewMode === 'verification'}
+        isDisabled={viewMode === 'verification' || isLoading}
+        aria-label={`${label} 输入框`}
+        startContent={
+          isLoading ? (
+            <Icon icon="lucide:loader-2" className="animate-spin text-primary" />
+          ) : null
+        }
       />
     </div>
   );
@@ -115,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <Card className="w-1/3 h-full rounded-md shadow-md mr-4 bg-white overflow-y-auto">
+    <Card aria-label="导航侧边栏" className="w-1/3 h-full rounded-md shadow-md mr-4 bg-white overflow-y-auto">
       <CardBody className="p-6 flex flex-col">
         <h2 className="text-xl font-bold mb-6 text-primary flex items-center">
           <Icon icon={viewMode === 'edit' ? "lucide:clipboard-list" : "lucide:check-circle"} className="mr-2" />
@@ -155,6 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               {fileList.map((fileName) => (
                 <SelectItem 
                   key={fileName}
+                  aria-label={`选择文件 ${fileName}`}
                   classNames={{
                     base: "hover:bg-primary/10 data-[selected=true]:bg-primary/20"
                   }}
@@ -165,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             </Select>
             
             {/* 文件进度 */}
-            {totalFiles > 0 && (
+            {totalFiles > 0 && currentFileIndex !== -1 && (
               <div className="mt-3">
                 <div className="flex justify-between text-sm text-gray-600 mb-1">
                   <span>{t.fileProgress}</span>
@@ -176,6 +185,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   className="w-full"
                   color="primary"
                   size="sm"
+                  aria-label={`文件处理进度: ${currentFileIndex + 1} / ${totalFiles}`}
                 />
               </div>
             )}
@@ -247,7 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Icon 
                     icon={showPDFPreview ? "lucide:upload" : "lucide:eye"} 
-                    className="text-base"
+                      className="text-base"
                   />
                   <span>{showPDFPreview ? t.fileUpload : t.pdfPreview}</span>
                 </Button>
@@ -258,7 +268,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Button 
                   color="primary" 
                   size="lg" 
-                  className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 h-8 rounded-lg text-white`}
+                  className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 rounded-lg text-white`}
                   onPress={handleNextStep}
                   aria-label="进入核对界面"
                 >
@@ -284,7 +294,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   <Button 
                     color="primary" 
                     size="lg" 
-                    className="flex-1 flex items-center justify-center gap-2 h-8 rounded-lg text-white"
+                    className="flex-1 flex items-center justify-center gap-2 rounded-lg text-white"
                     onPress={handleConfirmSubmit}
                     aria-label="确认提交订单信息"
                   >

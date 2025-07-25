@@ -5,9 +5,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 // API 配置
 const API_CONFIG = {
-  baseUrl: 'https://demo.langcore.net',
-  uploadEndpoint: '/api/file',
-  authToken: 'sk-zzvwbcaxoss3'
+  baseUrl: '',
+  uploadEndpoint: '/api/upload',
+  authToken: ''
 };
 
 interface FileUploadProps {
@@ -62,48 +62,39 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
 
   const uploadFileToServer = async (file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file, file.name);
 
     const uploadUrl = `${API_CONFIG.baseUrl}${API_CONFIG.uploadEndpoint}`;
 
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.authToken}`
+      },
+      body: formData,
+      redirect: 'follow' as RequestRedirect
+    };
 
-      // 设置上传进度监听
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable && onProgress) {
-          const progress = Math.round((event.loaded / event.total) * 100);
-          onProgress(progress);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        try {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            const response: UploadResponse = JSON.parse(xhr.responseText);
-            resolve(response);
-          } else {
-            reject(new Error(`上传失败: HTTP ${xhr.status}`));
-          }
-        } catch (error) {
-          reject(new Error('解析响应失败'));
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        reject(new Error('网络错误'));
-      });
-
-      xhr.addEventListener('timeout', () => {
-        reject(new Error('上传超时'));
-      });
-
-      xhr.open('POST', uploadUrl);
-      xhr.setRequestHeader('Authorization', `Bearer ${API_CONFIG.authToken}`);
-      xhr.timeout = 60000; // 60秒超时
-
-      xhr.send(formData);
-    });
+    try {
+      const response = await fetch(uploadUrl, requestOptions);
+      
+      if (!response.ok) {
+        throw new Error(`上传失败: HTTP ${response.status} - ${response.statusText}`);
+      }
+      
+      const result = await response.text();
+      console.log('上传响应:', result);
+      
+      try {
+        const responseData: UploadResponse = JSON.parse(result);
+        return responseData;
+      } catch (parseError) {
+        throw new Error('解析响应失败');
+      }
+    } catch (error) {
+      console.error('上传错误:', error);
+      throw error;
+    }
   };
 
   const handleFileUpload = async (file: File) => {
@@ -141,15 +132,26 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     try {
       console.log('开始上传文件:', file.name, '大小:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
       
-      const response = await uploadFileToServer(file, (progress) => {
-        setUploadProgress(progress);
-      });
+      // 模拟上传进度
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+      
+      const response = await uploadFileToServer(file);
+
+      clearInterval(progressInterval);
+      setUploadProgress(100);
 
       console.log('上传响应:', response);
 
       if (response.data?.fileId) {
         // 上传成功
-        setUploadProgress(100);
         setTimeout(() => {
           setIsUploading(false);
           onFileUploaded(file, {

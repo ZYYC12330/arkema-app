@@ -11,8 +11,8 @@ datasource db {
 }
 
 model Order {
-  id                String    @id @default(cuid())
-  fileName          String    @db.VarChar(255)
+  id                String   @id @default(autoincrement()) // 主键ID，自增
+  fileUrl          String    @db.VarChar(255)
 
   // 买方信息 (Sold-to Information)  
   soldToName        String    @db.VarChar(255)
