@@ -7,11 +7,13 @@ import { useLanguage } from '../contexts/LanguageContext';
 const API_CONFIG = {
   baseUrl: '',
   uploadEndpoint: '/api/upload',
-  authToken: ''
+  publicUploadEndpoint: 'https://demo.langcore.cn/api/file',
+  authToken: 'sk-v2c9gcxgkl0s'
 };
 
 interface FileUploadProps {
-  onFileUploaded: (file: File, fileInfo?: { fileId?: string; url?: string }) => void;
+  onFileUploaded: (file: File, fileInfo: { fileId: string; url: string; publicUrl?: string }) => void;
+  onError?: (error: string) => void;
 }
 
 interface UploadResponse {
@@ -23,7 +25,7 @@ interface UploadResponse {
   msg?: string;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
   const { t } = useLanguage();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -60,7 +62,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     }
   }, []);
 
-  const uploadFileToServer = async (file: File, onProgress?: (progress: number) => void): Promise<UploadResponse> => {
+  // 上传文件到本地服务器
+  const uploadFileToLocalServer = async (file: File): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file, file.name);
 
@@ -83,7 +86,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
       }
       
       const result = await response.text();
-      console.log('上传响应:', result);
+      console.log('本地服务器上传响应:', result);
       
       try {
         const responseData: UploadResponse = JSON.parse(result);
@@ -92,8 +95,40 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
         throw new Error('解析响应失败');
       }
     } catch (error) {
-      console.error('上传错误:', error);
+      console.error('本地服务器上传错误:', error);
       throw error;
+    }
+  };
+
+  // 上传文件到公网服务器
+  const uploadFileToPublicServer = async (file: File): Promise<string | null> => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+      
+      const uploadResponse = await fetch(API_CONFIG.publicUploadEndpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_CONFIG.authToken}`
+        },
+        body: formData,
+        redirect: 'follow'
+      });
+    
+      if (!uploadResponse.ok) {
+        throw new Error(`上传文件到公网失败: ${uploadResponse.statusText}`);
+      }
+      
+      const uploadResult = await uploadResponse.json();
+      
+      if (uploadResult.success && uploadResult.data && uploadResult.data.url) {
+        return uploadResult.data.url;
+      } else {
+        throw new Error('公网服务器响应格式不正确');
+      }
+    } catch (error) {
+      console.error('上传文件到公网失败:', error);
+      return null;
     }
   };
 
@@ -112,16 +147,16 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     
     if (!allowedTypes.includes(file.type)) {
       const message = '不支持的文件格式，请上传 PDF、DOC、DOCX、XLS、XLSX 或图片文件';
-      alert(message);
       setUploadError(message);
+      onError?.(message);
       return;
     }
 
     // 检查文件大小 (10MB)
     if (file.size > 10 * 1024 * 1024) {
       const message = '文件太大，请选择小于 10MB 的文件';
-      alert(message);
       setUploadError(message);
+      onError?.(message);
       return;
     }
 
@@ -143,42 +178,44 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
         });
       }, 200);
       
-      const response = await uploadFileToServer(file);
+      // 先上传到本地服务器
+      const localResponse = await uploadFileToLocalServer(file);
+      
+      if (!localResponse.data?.fileId) {
+        throw new Error(localResponse.msg || '本地服务器上传失败，未返回文件ID');
+      }
 
+      // 再上传到公网服务器
+      const publicUrl = await uploadFileToPublicServer(file);
+      
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      console.log('上传响应:', response);
+      console.log('文件上传完成:', {
+        fileId: localResponse.data.fileId,
+        localUrl: localResponse.data.url,
+        publicUrl
+      });
 
-      if (response.data?.fileId) {
-        // 上传成功
-        setTimeout(() => {
-          setIsUploading(false);
-          onFileUploaded(file, {
-            fileId: response.data?.fileId,
-            url: response.data?.url
-          });
-          console.log('文件上传成功，FileId:', response.data?.fileId);
-        }, 500);
-      } else {
-        throw new Error(response.msg || '上传失败，未返回文件ID');
-      }
+      // 上传成功，通知父组件
+      setTimeout(() => {
+        setIsUploading(false);
+        onFileUploaded(file, {
+          fileId: localResponse.data!.fileId!,
+          url: localResponse.data!.url!,
+          publicUrl: publicUrl || undefined
+        });
+        console.log('文件上传成功，FileId:', localResponse.data!.fileId);
+      }, 500);
+      
     } catch (error) {
       console.error('文件上传失败:', error);
       setIsUploading(false);
       setUploadProgress(0);
       const errorMessage = error instanceof Error ? error.message : '上传失败，请重试';
       setUploadError(errorMessage);
-      alert(errorMessage);
+      onError?.(errorMessage);
     }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   return (

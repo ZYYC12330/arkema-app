@@ -1,72 +1,163 @@
 import React, { useState } from 'react';
-import { Card, CardBody, Input, Button, Divider, Select, SelectItem, Progress } from "@heroui/react";
+import { Card, CardBody, Input, Button, Divider, Select, SelectItem, Progress, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../contexts/LanguageContext';
-import { OrderInfo } from '../types';
+import { BasicOrderInfo, ExtendedOrderInfo, CompleteOrderInfo, OrderProcessingPhase, OrderStatus } from '../types';
+import { OrderService } from '../utils/orderService';
 
 interface SidebarProps {
-  orderInfo: OrderInfo;
-  onOrderUpdate: (field: keyof OrderInfo, value: string) => void;
+  // 基本信息
+  basicOrderInfo: BasicOrderInfo;
+  onBasicOrderUpdate: (field: keyof BasicOrderInfo, value: string) => void;
+  
+  // 扩展信息
+  extendedOrderInfo: ExtendedOrderInfo;
+  onExtendedOrderUpdate: (field: keyof ExtendedOrderInfo, value: string) => void;
+  
+  // 处理阶段
+  currentPhase: OrderProcessingPhase;
+  
+  // 文件管理
   fileList?: string[];
   currentFile?: string;
   onFileSelect?: (fileName: string) => void;
-  onSubmit?: () => void;
+  
+  // 订单状态
+  orderStatus?: OrderStatus | null;
+  
+  // 操作回调
+  onGenerateExtendedInfo?: () => void;
+  onSubmitOrder?: () => void;
+  onBackToBasicInfo?: () => void;
+  
+  // UI状态
   currentFileIndex?: number;
   totalFiles?: number;
   showPDFPreview?: boolean;
   onToggleView?: () => void;
   canToggleView?: boolean;
+  
+  // 加载状态
   isLoading?: boolean;
+  isGeneratingCodes?: boolean;
+  isSubmittingOrder?: boolean;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ 
-  orderInfo, 
-  onOrderUpdate, 
+  basicOrderInfo,
+  onBasicOrderUpdate,
+  extendedOrderInfo,
+  onExtendedOrderUpdate,
+  currentPhase,
   fileList = [], 
   currentFile = '', 
   onFileSelect, 
-  onSubmit,
+  orderStatus,
+  onGenerateExtendedInfo,
+  onSubmitOrder,
+  onBackToBasicInfo,
   currentFileIndex = -1,
   totalFiles = 0,
   showPDFPreview = false,
   onToggleView,
   canToggleView = false,
   isLoading = false,
+  isGeneratingCodes = false,
+  isSubmittingOrder = false,
 }) => {
   const { t } = useLanguage();
-  const [viewMode, setViewMode] = useState<'edit' | 'verification'>('edit');
 
-  const renderInputField = (
-    field: keyof OrderInfo,
+  // 渲染基本信息输入字段
+  const renderBasicInputField = (
+    field: keyof BasicOrderInfo,
     label: string,
     icon: string,
     type: string = 'text'
-  ) => (
-    <div className="mb-4 relative">
-      <label className="text-sm font-medium text-gray-700 mb-1 flex items-center">
-        <Icon icon={icon} className="mr-2 text-primary" />
-        {label}
-      </label>
-      <Input
-        type={type}
-        value={isLoading ? '' : orderInfo[field]}
-        onChange={(e) => onOrderUpdate(field, e.target.value)}
-        placeholder={isLoading ? "正在提取..." : `${t.edit} ${label}`}
-        className="w-full"
-        size="sm"
-        isDisabled={viewMode === 'verification' || isLoading}
-        aria-label={`${label} 输入框`}
-        startContent={
-          isLoading ? (
-            <Icon icon="lucide:loader-2" className="animate-spin text-primary" />
-          ) : null
-        }
-      />
-    </div>
-  );
+  ) => {
+    const value = isLoading ? '' : basicOrderInfo[field];
+    const isEmpty = value === '-' || value === '';
+    const isSubmitted = orderStatus?.isSubmitted && orderStatus?.phase === 'submitted';
+    
+    return (
+      <div className="mb-4 relative">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700 flex items-center">
+            <Icon icon={icon} className="mr-2 text-primary" />
+            {label}
+          </label>
+          {isEmpty && (
+            <div className="flex items-center text-xs text-red-500">
+              <Icon icon="lucide:alert-circle" className="mr-1" />
+              此字段不能为空
+            </div>
+          )}
+        </div>
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => onBasicOrderUpdate(field, e.target.value)}
+          placeholder={isLoading ? "正在提取..." : `${t.edit} ${label}`}
+          className={`w-full rounded-lg ${isEmpty ? 'bg-red-50' : ''} ${isSubmitted ? 'bg-green-50' : ''}`}
+          size="sm"
+          isDisabled={currentPhase !== 'basic_info' || isLoading}
+          aria-label={`${label} 输入框`}
+          startContent={
+            isLoading ? (
+              <Icon icon="lucide:loader-2" className="animate-spin text-primary" />
+            ) : null
+          }
+        />
+      </div>
+    );
+  };
 
+  // 渲染扩展信息输入字段
+  const renderExtendedInputField = (
+    field: keyof ExtendedOrderInfo,
+    label: string,
+    icon: string,
+    type: string = 'text'
+  ) => {
+    const value = isGeneratingCodes ? '' : extendedOrderInfo[field];
+    const isEmpty = value === '-' || value === '';
+    const isSubmitted = orderStatus?.isSubmitted && orderStatus?.phase === 'submitted';
+    
+    return (
+      <div className="mb-4 relative">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700 flex items-center">
+            <Icon icon={icon} className="mr-2 text-primary" />
+            {label}
+          </label>
+          {isEmpty && (
+            <div className="flex items-center text-xs text-red-500">
+              <Icon icon="lucide:alert-circle" className="mr-1" />
+              此字段不能为空
+            </div>
+          )}
+        </div>
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => onExtendedOrderUpdate(field, e.target.value)}
+          placeholder={isGeneratingCodes ? "正在生成..." : `${t.edit} ${label}`}
+          className={`w-full rounded-lg ${isEmpty ? 'bg-red-50' : ''} ${isSubmitted ? 'bg-green-50' : ''}`}
+          size="sm"
+          isDisabled={currentPhase !== 'extended_info' || isGeneratingCodes}
+          aria-label={`${label} 输入框`}
+          startContent={
+            isGeneratingCodes ? (
+              <Icon icon="lucide:loader-2" className="animate-spin text-primary" />
+            ) : null
+          }
+        />
+      </div>
+    );
+  };
+
+  // 渲染只读字段（已提交状态）
   const renderDisplayField = (
-    field: keyof OrderInfo,
+    value: string,
     label: string,
     icon: string
   ) => (
@@ -75,16 +166,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         <Icon icon={icon} className="mr-2 text-primary" />
         {label}
       </label>
-      <div className={`p-2 border rounded-md min-h-[32px] text-sm transition-all duration-500 ${
-        viewMode === 'verification' 
-          ? 'bg-primary/10 border-primary' 
-          : 'bg-gray-50 border-gray-200'
-      }`}>
-        {orderInfo[field] || '-'}
+      <div className="p-2 border rounded-md min-h-[32px] text-sm bg-gray-50 border-gray-200">
+        {value || '-'}
       </div>
     </div>
   );
 
+  // 渲染章节
   const renderSection = (title: string, icon: string, children: React.ReactNode) => (
     <div className="mb-6">
       <h3 className="text-lg font-semibold mb-3 flex items-center text-primary">
@@ -96,39 +184,55 @@ const Sidebar: React.FC<SidebarProps> = ({
     </div>
   );
 
-  const renderFieldForMode = (
-    field: keyof OrderInfo,
-    label: string,
-    icon: string,
-    type: string = 'text'
-  ) => {
-    return viewMode === 'edit' 
-      ? renderInputField(field, label, icon, type)
-      : renderDisplayField(field, label, icon);
-  };
-
-  const handleNextStep = () => {
-    setViewMode('verification');
-  };
-
-  const handleBackToEdit = () => {
-    setViewMode('edit');
-  };
-
-  const handleConfirmSubmit = () => {
-    if (onSubmit) {
-      onSubmit();
+  // 获取当前阶段的标题和图标
+  const getPhaseInfo = () => {
+    switch (currentPhase) {
+      case 'basic_info':
+        return { title: t.basicInfoPhase, icon: 'lucide:clipboard-list' };
+      case 'extended_info':
+        return { title: t.extendedInfoPhase, icon: 'lucide:settings' };
+      case 'submitted':
+        return { title: t.submittedPhase, icon: 'lucide:check-circle' };
+      default:
+        return { title: t.basicInfoPhase, icon: 'lucide:clipboard-list' };
     }
-    setViewMode('edit'); // 提交后重置为编辑模式
+  };
+
+  const phaseInfo = getPhaseInfo();
+
+  // 获取状态芯片的颜色
+  const getStatusChipColor = (phase: OrderProcessingPhase) => {
+    switch (phase) {
+      case 'basic_info': return 'warning';
+      case 'extended_info': return 'primary';
+      case 'submitted': return 'success';
+      default: return 'default';
+    }
   };
 
   return (
     <Card aria-label="导航侧边栏" className="w-1/3 h-full rounded-md shadow-md mr-4 bg-white overflow-y-auto">
       <CardBody className="p-6 flex flex-col">
-        <h2 className="text-xl font-bold mb-6 text-primary flex items-center">
-          <Icon icon={viewMode === 'edit' ? "lucide:clipboard-list" : "lucide:check-circle"} className="mr-2" />
-          {viewMode === 'edit' ? t.extractedInfo : t.verification}
-        </h2>
+        {/* 标题和状态 */}
+        <div className="mb-6">
+          <h2 className="text-xl font-bold mb-3 text-primary flex items-center">
+            <Icon icon={phaseInfo.icon} className="mr-2" />
+            {phaseInfo.title}
+          </h2>
+          
+          {orderStatus && (
+            <Chip 
+              color={getStatusChipColor(orderStatus.phase)}
+              variant="flat"
+              size="sm"
+              startContent={<Icon icon="lucide:clock" className="text-xs" />}
+            >
+              {orderStatus.phase === 'basic_info' && t.basicInfoPhase}
+              {orderStatus.phase === 'extended_info' && t.extendedInfoPhase}
+              {orderStatus.phase === 'submitted' && t.submittedPhase}
+            </Chip>
+          )}
+        </div>
 
         {/* 文件选择下拉框 */}
         {fileList.length > 0 && (
@@ -147,7 +251,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               }}
               placeholder={t.selectFile2}
               className="w-full"
-              isDisabled={viewMode === 'verification'}
+              isDisabled={currentPhase === 'submitted'}
               aria-labelledby="file-select-label"
               aria-label={t.selectFile2}
               classNames={{
@@ -160,17 +264,27 @@ const Sidebar: React.FC<SidebarProps> = ({
               }}
               startContent={<Icon icon="lucide:folder" className="text-gray-500 flex-shrink-0" />}
             >
-              {fileList.map((fileName) => (
-                <SelectItem 
-                  key={fileName}
-                  aria-label={`选择文件 ${fileName}`}
-                  classNames={{
-                    base: "hover:bg-primary/10 data-[selected=true]:bg-primary/20"
-                  }}
-                >
-                  {fileName}
-                </SelectItem>
-              ))}
+              {fileList.map((fileName) => {
+                // 检查文件是否已提交
+                const isFileSubmitted = OrderService.isOrderSubmitted(fileName);
+                
+                return (
+                  <SelectItem 
+                    key={fileName}
+                    aria-label={`选择文件 ${fileName}`}
+                    classNames={{
+                      base: `hover:bg-primary/10 data-[selected=true]:bg-primary/20 ${isFileSubmitted ? 'text-green-600 font-medium' : ''}`
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      {fileName}
+                      {isFileSubmitted && (
+                        <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
+                      )}
+                    </div>
+                  </SelectItem>
+                );
+              })}
             </Select>
             
             {/* 文件进度 */}
@@ -195,117 +309,211 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
         
         <div className="flex-1 overflow-y-auto">
+          {/* 已提交状态 - 显示所有信息为只读 */}
+          {currentPhase === 'submitted' && (
+            <>
+              {/* 基本信息 */}
+              {renderSection(
+                t.basicInfo,
+                'lucide:user',
+                <>
+                  {renderDisplayField(basicOrderInfo.soldToName, t.soldToName, 'lucide:user')}
+                  {renderDisplayField(basicOrderInfo.soldToAddress, t.soldToAddress, 'lucide:home')}
+                  {renderDisplayField(basicOrderInfo.shipToName, t.shipToName, 'lucide:truck')}
+                  {renderDisplayField(basicOrderInfo.shipToAddress, t.shipToAddress, 'lucide:map')}
+                  {renderDisplayField(basicOrderInfo.vendorName, t.vendorName, 'lucide:briefcase')}
+                  {renderDisplayField(basicOrderInfo.vendorAddress, t.vendorAddress, 'lucide:building')}
+                  {renderDisplayField(basicOrderInfo.poNumber, t.poNumber, 'lucide:hash')}
+                  {renderDisplayField(basicOrderInfo.poDate, t.poDate, 'lucide:calendar')}
+                  {renderDisplayField(basicOrderInfo.deliveryDate, t.deliveryDate, 'lucide:clock')}
+                  {renderDisplayField(basicOrderInfo.itemNumber, t.itemNumber, 'lucide:barcode')}
+                  {renderDisplayField(basicOrderInfo.itemName, t.itemName, 'lucide:tag')}
+                  {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus')}
+                  {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler')}
+                  {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign')}
+                </>
+              )}
 
-        {/* 地址信息 */}
-        {renderSection(
-          t.addressInfo,
-          'lucide:map-pin',
-          <>
-            {renderFieldForMode('soldToName', t.soldToName, 'lucide:user')}
-            {renderFieldForMode('soldToAddress', t.soldToAddress, 'lucide:home')}
-            {renderFieldForMode('arkemaSoldToCode', t.arkemaSoldToCode, 'lucide:code')}
-            {renderFieldForMode('shipToName', t.shipToName, 'lucide:truck')}
-            {renderFieldForMode('shipToAddress', t.shipToAddress, 'lucide:map')}
-            {renderFieldForMode('arkemaShipToCode', t.arkemaShipToCode, 'lucide:code')}
-            {renderFieldForMode('vendorName', t.vendorName, 'lucide:briefcase')}
-            {renderFieldForMode('vendorAddress', t.vendorAddress, 'lucide:building')}
-            {renderFieldForMode('vendorSalesArea', t.vendorSalesArea, 'lucide:globe')}
-          </>
-        )}
+              {/* 扩展信息 */}
+              {renderSection(
+                t.extendedInfo,
+                'lucide:settings',
+                <>
+                  {renderDisplayField(extendedOrderInfo.arkemaSoldToCode, t.arkemaSoldToCode, 'lucide:code')}
+                  {renderDisplayField(extendedOrderInfo.arkemaShipToCode, t.arkemaShipToCode, 'lucide:code')}
+                  {renderDisplayField(extendedOrderInfo.vendorSalesArea, t.vendorSalesArea, 'lucide:globe')}
+                  {renderDisplayField(extendedOrderInfo.deliveryByDate, t.deliveryByDate, 'lucide:clock')}
+                  {renderDisplayField(extendedOrderInfo.lineNumber, t.lineNumber, 'lucide:list-ordered')}
+                  {renderDisplayField(extendedOrderInfo.arkemaProductCode, t.arkemaProductCode, 'lucide:code')}
+                </>
+              )}
+            </>
+          )}
 
-        {/* 订单信息 */}
-        {renderSection(
-          t.orderInfo,
-          'lucide:file-text',
-          <>
-            {renderFieldForMode('poNumber', t.poNumber, 'lucide:hash')}
-            {renderFieldForMode('poDate', t.poDate, 'lucide:calendar', 'date')}
-            {renderFieldForMode('deliveryDate', t.deliveryDate, 'lucide:clock', 'date')}
-            {renderFieldForMode('deliveryByDate', t.deliveryByDate, 'lucide:clock', 'date')}
-          </>
-        )}
+          {/* 基本信息阶段 */}
+          {currentPhase === 'basic_info' && (
+            <>
+              {renderSection(
+                t.addressInfo,
+                'lucide:map-pin',
+                <>
+                  {renderBasicInputField('soldToName', t.soldToName, 'lucide:user')}
+                  {renderBasicInputField('soldToAddress', t.soldToAddress, 'lucide:home')}
+                  {renderBasicInputField('shipToName', t.shipToName, 'lucide:truck')}
+                  {renderBasicInputField('shipToAddress', t.shipToAddress, 'lucide:map')}
+                  {renderBasicInputField('vendorName', t.vendorName, 'lucide:briefcase')}
+                  {renderBasicInputField('vendorAddress', t.vendorAddress, 'lucide:building')}
+                </>
+              )}
 
-        {/* 商品信息 */}
-         {renderSection(
-           t.itemInfo,
-           'lucide:package',
-           <>
-             {renderFieldForMode('lineNumber', t.lineNumber, 'lucide:list-ordered')}
-             {renderFieldForMode('itemNumber', t.itemNumber, 'lucide:barcode')}
-             {renderFieldForMode('itemName', t.itemName, 'lucide:tag')}
-             {renderFieldForMode('arkemaProductCode', t.arkemaProductCode, 'lucide:code')}
-             {renderFieldForMode('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
-             {renderFieldForMode('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
-             {renderFieldForMode('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
-           </>
-         )}
+              {renderSection(
+                t.orderInfo,
+                'lucide:file-text',
+                <>
+                  {renderBasicInputField('poNumber', t.poNumber, 'lucide:hash')}
+                  {renderBasicInputField('poDate', t.poDate, 'lucide:calendar', 'date')}
+                  {renderBasicInputField('deliveryDate', t.deliveryDate, 'lucide:clock', 'date')}
+                </>
+              )}
+
+              {renderSection(
+                t.itemInfo,
+                'lucide:package',
+                <>
+                  {renderBasicInputField('itemNumber', t.itemNumber, 'lucide:barcode')}
+                  {renderBasicInputField('itemName', t.itemName, 'lucide:tag')}
+                  {renderBasicInputField('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
+                  {renderBasicInputField('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
+                  {renderBasicInputField('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
+                </>
+              )}
+            </>
+          )}
+
+          {/* 扩展信息阶段 */}
+          {currentPhase === 'extended_info' && (
+            <>
+              {/* 显示基本信息（只读） */}
+              {renderSection(
+                t.basicInfo,
+                'lucide:check',
+                <>
+                  {renderDisplayField(basicOrderInfo.soldToName, t.soldToName, 'lucide:user')}
+                  {renderDisplayField(basicOrderInfo.soldToAddress, t.soldToAddress, 'lucide:home')}
+                  {renderDisplayField(basicOrderInfo.shipToName, t.shipToName, 'lucide:truck')}
+                  {renderDisplayField(basicOrderInfo.shipToAddress, t.shipToAddress, 'lucide:map')}
+                  {renderDisplayField(basicOrderInfo.vendorName, t.vendorName, 'lucide:briefcase')}
+                  {renderDisplayField(basicOrderInfo.vendorAddress, t.vendorAddress, 'lucide:building')}
+                  {renderDisplayField(basicOrderInfo.poNumber, t.poNumber, 'lucide:hash')}
+                  {renderDisplayField(basicOrderInfo.poDate, t.poDate, 'lucide:calendar')}
+                  {renderDisplayField(basicOrderInfo.deliveryDate, t.deliveryDate, 'lucide:clock')}
+                  {renderDisplayField(basicOrderInfo.itemNumber, t.itemNumber, 'lucide:barcode')}
+                  {renderDisplayField(basicOrderInfo.itemName, t.itemName, 'lucide:tag')}
+                  {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus')}
+                  {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler')}
+                  {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign')}
+                </>
+              )}
+
+              {/* 扩展信息（可编辑） */}
+              {renderSection(
+                t.extendedInfo,
+                'lucide:settings',
+                <>
+                  {renderExtendedInputField('arkemaSoldToCode', t.arkemaSoldToCode, 'lucide:code')}
+                  {renderExtendedInputField('arkemaShipToCode', t.arkemaShipToCode, 'lucide:code')}
+                  {renderExtendedInputField('vendorSalesArea', t.vendorSalesArea, 'lucide:globe')}
+                  {renderExtendedInputField('deliveryByDate', t.deliveryByDate, 'lucide:clock', 'date')}
+                  {renderExtendedInputField('lineNumber', t.lineNumber, 'lucide:list-ordered')}
+                  {renderExtendedInputField('arkemaProductCode', t.arkemaProductCode, 'lucide:code')}
+                </>
+              )}
+            </>
+          )}
         </div>
 
         {/* 按钮区域 */}
-        {onSubmit && (
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <div className="flex gap-3">
-              {/* 切换视图按钮 */}
-              {canToggleView && onToggleView && viewMode === 'edit' && (
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="flex gap-3">
+            {/* 切换视图按钮 */}
+            {canToggleView && onToggleView && currentPhase !== 'submitted' && (
+              <Button 
+                color="secondary" 
+                size="lg" 
+                className="flex-1 flex items-center justify-center gap-2 rounded-lg"
+                variant="bordered"
+                onPress={onToggleView}
+                aria-label={showPDFPreview ? '切换到文件上传视图' : '切换到PDF预览视图'}
+              >
+                <Icon 
+                  icon={showPDFPreview ? "lucide:upload" : "lucide:eye"} 
+                  className="text-base"
+                />
+                <span>{showPDFPreview ? t.fileUpload : t.pdfPreview}</span>
+              </Button>
+            )}
+            
+            {/* 基本信息阶段按钮 */}
+            {currentPhase === 'basic_info' && (
+              <Button 
+                color="primary" 
+                size="lg" 
+                className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 rounded-lg text-white`}
+                onPress={onGenerateExtendedInfo}
+                isLoading={isGeneratingCodes}
+                isDisabled={isLoading || isGeneratingCodes}
+                aria-label="生成内部编号"
+              >
+                <Icon icon="lucide:settings" className="text-base text-white" />
+                <span>{isGeneratingCodes ? t.generatingCodes : t.generateInternalCodes}</span>
+              </Button>
+            )}
+
+            {/* 扩展信息阶段按钮 */}
+            {currentPhase === 'extended_info' && (
+              <>
                 <Button 
                   color="secondary" 
                   size="lg" 
                   className="flex-1 flex items-center justify-center gap-2 rounded-lg"
                   variant="bordered"
-                  onPress={onToggleView}
-                  aria-label={showPDFPreview ? '切换到文件上传视图' : '切换到PDF预览视图'}
+                  onPress={onBackToBasicInfo}
+                  isDisabled={isSubmittingOrder}
+                  aria-label="返回基本信息编辑"
                 >
-                  <Icon 
-                    icon={showPDFPreview ? "lucide:upload" : "lucide:eye"} 
-                      className="text-base"
-                  />
-                  <span>{showPDFPreview ? t.fileUpload : t.pdfPreview}</span>
+                  <Icon icon="lucide:arrow-left" className="text-base" />
+                  <span>{t.backToEdit}</span>
                 </Button>
-              )}
-              
-              {/* 编辑模式按钮 */}
-              {viewMode === 'edit' && (
                 <Button 
                   color="primary" 
                   size="lg" 
-                  className={`${canToggleView ? "flex-1" : "w-full"} flex items-center justify-center gap-2 rounded-lg text-white`}
-                  onPress={handleNextStep}
-                  aria-label="进入核对界面"
+                  className="flex-1 flex items-center justify-center gap-2 rounded-lg text-white"
+                  onPress={onSubmitOrder}
+                  isLoading={isSubmittingOrder}
+                  isDisabled={isSubmittingOrder}
+                  aria-label="提交订单"
                 >
-                  <Icon icon="lucide:arrow-right" className="text-base text-white" />
-                  <span>{t.nextStep}</span>
+                  <Icon icon="lucide:check" className="text-base text-white" />
+                  <span>{isSubmittingOrder ? t.submittingOrder : t.confirmSubmit}</span>
                 </Button>
-              )}
+              </>
+            )}
 
-              {/* 核对模式按钮 */}
-              {viewMode === 'verification' && (
-                <>
-                  <Button 
-                    color="secondary" 
-                    size="lg" 
-                    className="flex-1 flex items-center justify-center gap-2 rounded-lg"
-                    variant="bordered"
-                    onPress={handleBackToEdit}
-                    aria-label="返回编辑界面"
-                  >
-                    <Icon icon="lucide:arrow-left" className="text-base" />
-                    <span>{t.backToEdit}</span>
-                  </Button>
-                  <Button 
-                    color="primary" 
-                    size="lg" 
-                    className="flex-1 flex items-center justify-center gap-2 rounded-lg text-white"
-                    onPress={handleConfirmSubmit}
-                    aria-label="确认提交订单信息"
-                  >
-                    <Icon icon="lucide:check" className="text-base text-white" />
-                    <span>{t.confirmSubmit}</span>
-                  </Button>
-                </>
-              )}
-            </div>
+            {/* 已提交状态按钮 */}
+            {currentPhase === 'submitted' && (
+              <Button 
+                color="success" 
+                size="lg" 
+                className="w-full flex items-center justify-center gap-2 rounded-lg text-white"
+                isDisabled={true}
+                aria-label="订单已提交"
+              >
+                <Icon icon="lucide:check-circle" className="text-base text-white" />
+                <span>{t.orderSubmitted}</span>
+              </Button>
+            )}
           </div>
-        )}
+        </div>
       </CardBody>
     </Card>
   );

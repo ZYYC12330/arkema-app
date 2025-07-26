@@ -11,36 +11,37 @@ datasource db {
 }
 
 model Order {
-  id                String   @id @default(autoincrement()) // 主键ID，自增
+  id               Int   @id @default(autoincrement()) // 主键ID，自增
   fileUrl          String    @db.VarChar(255)
+  fileName         String    @db.VarChar(255)
 
   // 买方信息 (Sold-to Information)  
-  soldToName        String    @db.VarChar(255)
-  soldToAddress     String    @db.Text
-  arkemaSoldToCode  String?   @db.VarChar(50)   //%%%模拟数据%%%
+  soldToName        String?    @db.VarChar(255)
+  soldToAddress     String?    @db.Text
+  arkemaSoldToCode  String?   @db.VarChar(255)   //%%%模拟数据%%%
   
   // 收货方信息 (Ship-to Information)  
   shipToName        String    @db.VarChar(255)
-  shipToAddress     String    @db.Text
-  arkemaShipToCode  String?   @db.VarChar(50)   //%%%模拟数据%%%
+  shipToAddress     String?    @db.Text
+  arkemaShipToCode  String?   @db.VarChar(255)   //%%%模拟数据%%%
   
   // 供应商信息 (Vendor Information)
   vendorName        String    @db.VarChar(255)
-  vendorAddress     String    @db.Text
-  vendorSalesArea   String?   @db.VarChar(100)    //%%%模拟数据%%%
+  vendorAddress     String?    @db.Text
+  vendorSalesArea   String?   @db.VarChar(255)    //%%%模拟数据%%%
   
   // 订单信息 (Order Information)
-  poNumber          String    @unique @db.VarChar(50)  // Sales Order Number
-  poDate            DateTime  // Purchase Order Date
-  deliveryDate      DateTime  // Delivery Date
+  poNumber          String?    @unique @db.VarChar(255)  // Sales Order Number
+  poDate            DateTime?  // Purchase Order Date
+  deliveryDate      DateTime?  // Delivery Date
   deliveryByDate    DateTime? // Delivery By Date     //%%%模拟数据%%%
   
   // 商品信息 (Item Information)
-  lineNumber        String?   @db.VarChar(20)     //%%%模拟数据%%%
-  arkemaProductCode String?   @db.VarChar(50)    //%%%模拟数据%%%
-  itemQuantity      Decimal   @db.Decimal(15, 3)  // 支持3位小数的数量
-  unitOfMeasure     String    @db.VarChar(20)     // 单位
-  unitPrice         Decimal   @db.Decimal(15, 2)  // 支持2位小数的价格
+  lineNumber        String?   @db.VarChar(255)     //%%%模拟数据%%%
+  arkemaProductCode String?   @db.VarChar(255)    //%%%模拟数据%%%
+  itemQuantity      Decimal?   @db.Decimal(15, 3)  // 支持3位小数的数量
+  unitOfMeasure     String?    @db.VarChar(255)     // 单位
+  unitPrice         Decimal?   @db.Decimal(15, 2)  // 支持2位小数的价格
   
 }
 

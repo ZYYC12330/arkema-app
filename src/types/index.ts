@@ -24,6 +24,54 @@ export interface OrderInfo {
   arkemaProductCode: string;
 }
 
+// 订单处理阶段
+export type OrderProcessingPhase = 'basic_info' | 'extended_info' | 'submitted';
+
+// 基本订单信息（第一阶段提取的信息）
+export interface BasicOrderInfo {
+  id: string;
+  soldToName: string;
+  soldToAddress: string;
+  shipToName: string;
+  shipToAddress: string;
+  vendorName: string;
+  vendorAddress: string;
+  poNumber: string;
+  poDate: string;
+  deliveryDate: string;
+  itemNumber: string;
+  itemName: string;
+  itemQuantity: string;
+  unitOfMeasure: string;
+  unitPrice: string;
+}
+
+// 扩展订单信息（内部编号等）
+export interface ExtendedOrderInfo {
+  arkemaSoldToCode: string;
+  arkemaShipToCode: string;
+  vendorSalesArea: string;
+  deliveryByDate: string;
+  lineNumber: string;
+  arkemaProductCode: string;
+}
+
+// 完整订单信息
+export interface CompleteOrderInfo extends BasicOrderInfo, ExtendedOrderInfo {
+  phase: OrderProcessingPhase;
+  isSubmitted: boolean;
+  fileUrl?: string;
+}
+
+// 订单状态
+export interface OrderStatus {
+  fileName: string;
+  phase: OrderProcessingPhase;
+  isSubmitted: boolean;
+  submittedAt?: string;
+  lastModified?: string;
+}
+
 // 语言类型
 export type Language = 'zh' | 'en';
 
@@ -57,13 +105,29 @@ export interface TranslationTexts {
   verification: string;
   backToEdit: string;
   confirmSubmit: string;
+  // 新增：订单处理流程翻译
+  basicInfo: string;
+  extendedInfo: string;
+  generateCodes: string;
+  processingPhase: string;
+  basicInfoPhase: string;
+  extendedInfoPhase: string;
+  submittedPhase: string;
+  orderSubmitted: string;
+  submittingOrder: string;
+  generateInternalCodes: string;
+  generatingCodes: string;
+  viewSubmittedOrder: string;
+  resubmitOrder: string;
+  orderAlreadySubmitted: string;
+  submissionSuccess: string;
+  submissionFailed: string;
   pdfPreview: string;
   zoomIn: string;
   zoomOut: string;
   download: string;
   pdfPreviewContent: string;
   edit: string;
-  basicInfo: string;
   addressInfo: string;
   orderInfo: string;
   itemInfo: string;
