@@ -75,6 +75,33 @@ export interface OrderStatus {
 // 语言类型
 export type Language = 'zh' | 'en';
 
+// 上传状态枚举
+export type UploadStatus = 'pending' | 'uploading' | 'completed' | 'failed' | 'processing';
+
+// 上传队列项
+export interface UploadQueueItem {
+  id: string;
+  file: File;
+  status: UploadStatus;
+  progress: number;
+  error?: string;
+  fileInfo?: {
+    fileId: string;
+    url: string;
+    publicUrl?: string;
+  };
+  startTime?: number;
+  endTime?: number;
+}
+
+// 上传队列状态
+export interface UploadQueueState {
+  items: UploadQueueItem[];
+  isProcessing: boolean;
+  completedCount: number;
+  failedCount: number;
+}
+
 // 翻译文本接口
 export interface TranslationTexts {
   appTitle: string;
@@ -156,4 +183,17 @@ export interface TranslationTexts {
   // PDF 查看器相关
   selectPDFFile: string;
   loadError: string;
+  
+  // 多文件上传相关
+  singleFileMode: string;
+  multiFileMode: string;
+  uploadQueue: string;
+  queueEmpty: string;
+  filesUploading: string;
+  startUpload: string;
+  pauseUpload: string;
+  retryFailed: string;
+  clearQueue: string;
+  fileUploaded: string;
+  selectFromQueue: string;
 } 

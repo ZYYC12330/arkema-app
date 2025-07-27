@@ -82,6 +82,21 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     orderAlreadySubmitted: "该订单已提交",
     submissionSuccess: "订单提交成功",
     submissionFailed: "订单提交失败",
+    returnToPreviousStep: '退回',
+    aiSuggestion: 'AI 建议',
+    
+    // 多文件上传相关
+    singleFileMode: '单文件模式',
+    multiFileMode: '批量上传',
+    uploadQueue: '上传队列',
+    queueEmpty: '队列为空',
+    filesUploading: '个文件上传中',
+    startUpload: '开始上传',
+    pauseUpload: '暂停',
+    retryFailed: '重试失败',
+    clearQueue: '清空队列',
+    fileUploaded: '文件上传成功',
+    selectFromQueue: '请在侧边栏选择要处理的文件',
   },
   en: {
     appTitle: 'Auto SAP Flow',
@@ -142,7 +157,7 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     submitSuccess: 'Submit Success',
     submitSuccessMessage: 'File has been successfully submitted and saved!',
     nextFile: 'Next File',
-    allFilesCompleted: 'All files have been processed',
+    allFilesCompleted: 'All files have been processed.',
     fileProgress: 'File Progress',
     // PDF 查看器相关
     selectPDFFile: 'Select PDF File',
@@ -164,5 +179,20 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     orderAlreadySubmitted: "This order has been submitted",
     submissionSuccess: "Order submitted successfully",
     submissionFailed: "Order submission failed",
+    returnToPreviousStep: 'Return',
+    aiSuggestion: 'AI Suggestion',
+    
+    // 多文件上传相关
+    singleFileMode: 'Single File',
+    multiFileMode: 'Batch Upload',
+    uploadQueue: 'Upload Queue',
+    queueEmpty: 'No files in queue',
+    filesUploading: 'files uploading',
+    startUpload: 'Start Upload',
+    pauseUpload: 'Pause',
+    retryFailed: 'Retry Failed',
+    clearQueue: 'Clear Queue',
+    fileUploaded: 'File uploaded successfully',
+    selectFromQueue: 'Please select a file from the sidebar to process',
   },
 }; 

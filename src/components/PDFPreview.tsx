@@ -5,59 +5,31 @@ import { useLanguage } from '../contexts/LanguageContext';
 import PDFViewer from './PDFViewer';
 
 interface PDFPreviewProps {
-  uploadedFile?: File | null;
-  fileUrl?: string | null;
+  uploadedFile: File | null;
+  fileUrl: string | null;
+  highlightText?: string; // 新增高亮文本属性
 }
 
-const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile, fileUrl }) => {
-  const { t } = useLanguage();
+const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile, fileUrl, highlightText }) => {
+  const fileToPreview = uploadedFile || fileUrl;
 
-  // 下载文件功能
-  const handleDownload = () => {
-    if (uploadedFile) {
-      const url = URL.createObjectURL(uploadedFile);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = uploadedFile.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } else if (fileUrl) {
-      const a = document.createElement('a');
-      a.href = fileUrl;
-      a.download = fileUrl.split('/').pop() || 'document.pdf';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  if (!fileToPreview) {
+    return (
+      <div className="w-2/3 flex items-center justify-center bg-gray-100 rounded-md">
+        <p className="text-gray-500">没有可预览的文件</p>
+      </div>
+    );
+  }
   
   return (
-    <div className="flex-1 flex flex-col">
-      {/* PDF 查看器 */}
-      <div className="flex-1">
-        <PDFViewer 
-           file={uploadedFile || fileUrl}
-           height="calc(100vh - 200px)"
-           onLoadSuccess={(numPages) => {
-             console.log(`PDF 加载成功，共 ${numPages} 页`);
-           }}
-           onLoadError={(error) => {
-             console.error('PDF 加载失败:', error);
-           }}
-        />
-      </div>
+    <div className="w-2/3">
+      <PDFViewer 
+        file={fileToPreview} 
+        height="calc(100vh - 120px)" 
+        highlightText={highlightText} // 传递高亮文本
+      />
     </div>
   );
 };
 
-export default PDFPreview;0
+export default PDFPreview;

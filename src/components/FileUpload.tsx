@@ -1,3 +1,8 @@
+/**
+ * @file FileUpload.tsx
+ * @description 文件上传组件，支持拖放和点击选择文件，并显示上传进度。
+ */
+
 import React, { useCallback, useState } from 'react';
 import { Card, CardBody, Button, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -8,14 +13,26 @@ const API_CONFIG = {
   baseUrl: '',
   uploadEndpoint: '/api/upload',
   publicUploadEndpoint: 'https://demo.langcore.cn/api/file',
-  authToken: 'sk-v2c9gcxgkl0s'
+  authToken: 'sk-zzvwbcaxoss3'
 };
 
+/**
+ * FileUpload 组件的属性接口
+ */
 interface FileUploadProps {
+  /** 文件上传成功的回调 */
   onFileUploaded: (file: File, fileInfo: { fileId: string; url: string; publicUrl?: string }) => void;
+  /** 文件上传失败的回调 */
   onError?: (error: string) => void;
+  /** 多文件选择的回调 */
+  onFilesSelected?: (files: File[]) => void;
+  /** 是否支持多文件模式 */
+  multipleMode?: boolean;
 }
 
+/**
+ * 上传响应的接口
+ */
 interface UploadResponse {
   data?: {
     fileId?: string;
@@ -25,25 +42,46 @@ interface UploadResponse {
   msg?: string;
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
+/**
+ * 文件上传组件
+ * 
+ * @description 提供一个用户友好的界面，用于上传文件。
+ * 支持拖放、点击选择、文件类型/大小验证和上传进度显示。
+ * 支持单文件和多文件上传模式。
+ */
+const FileUpload: React.FC<FileUploadProps> = ({ 
+  onFileUploaded, 
+  onError, 
+  onFilesSelected, 
+  multipleMode = false 
+}) => {
   const { t } = useLanguage();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  /**
+   * 处理文件拖拽悬停事件
+   */
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
   }, []);
 
+  /**
+   * 处理文件拖拽离开事件
+   */
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
   }, []);
 
+  /**
+   * 处理文件放下事件
+   */
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -51,18 +89,36 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
 
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
-      handleFileUpload(files[0]);
+      if (multipleMode && onFilesSelected) {
+        onFilesSelected(files);
+      } else {
+        handleFileUpload(files[0]);
+      }
     }
-  }, []);
+  }, [multipleMode, onFilesSelected]);
 
+  /**
+   * 处理文件选择事件
+   */
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleFileUpload(files[0]);
+      const fileArray = Array.from(files);
+      if (multipleMode && onFilesSelected) {
+        onFilesSelected(fileArray);
+      } else {
+        handleFileUpload(fileArray[0]);
+      }
     }
-  }, []);
+    // 清空 input，允许重复选择相同文件
+    e.target.value = '';
+  }, [multipleMode, onFilesSelected]);
 
-  // 上传文件到本地服务器
+  /**
+   * 上传文件到本地服务器
+   * @param file 要上传的文件
+   * @returns 解析后的上传响应
+   */
   const uploadFileToLocalServer = async (file: File): Promise<UploadResponse> => {
     const formData = new FormData();
     formData.append('file', file, file.name);
@@ -100,11 +156,15 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
     }
   };
 
-  // 上传文件到公网服务器
+  /**
+   * 上传文件到公网服务器
+   * @param file 要上传的文件
+   * @returns 公网可访问的 URL，如果失败则返回 null
+   */
   const uploadFileToPublicServer = async (file: File): Promise<string | null> => {
     try {
       const formData = new FormData();
-      formData.append("file", file, file.name);
+      formData.append("file", file);
       
       const uploadResponse = await fetch(API_CONFIG.publicUploadEndpoint, {
         method: 'POST',
@@ -132,6 +192,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
     }
   };
 
+  /**
+   * 处理文件上传的核心逻辑
+   * @param file 要上传的文件
+   */
   const handleFileUpload = async (file: File) => {
     // 检查文件类型 - 扩展支持更多格式
     const allowedTypes = [
@@ -254,7 +318,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
               onClick={() => document.getElementById('file-input')?.click()}
               role="button"
               tabIndex={0}
-              aria-label={t.uploadArea}
+              aria-label={multipleMode ? '多文件上传区域' : t.uploadArea}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -262,12 +326,19 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
                 }
               }}
             >
-              <Icon icon="lucide:cloud-upload" className="text-6xl text-gray-400 mb-4" />
-              <p className="text-lg font-medium text-gray-700 mb-2">{t.uploadArea}</p>
-              <p className="text-sm text-gray-500 mb-4">{t.uploadInstruction}</p>
+              <Icon 
+                icon={multipleMode ? "lucide:files" : "lucide:cloud-upload"} 
+                className="text-6xl text-gray-400 mb-4" 
+              />
+              <p className="text-lg font-medium text-gray-700 mb-2">
+                {multipleMode ? '拖放多个文件到此处' : t.uploadArea}
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                {multipleMode ? '支持同时选择多个文件批量上传' : t.uploadInstruction}
+              </p>
               <Button color="primary" variant="flat" size="lg">
-                <Icon icon="lucide:file-plus" className="mr-2" />
-                {t.selectFile}
+                <Icon icon={multipleMode ? "lucide:folder-plus" : "lucide:file-plus"} className="mr-2" />
+                {multipleMode ? '选择多个文件' : t.selectFile}
               </Button>
             </div>
 
@@ -275,14 +346,22 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, onError }) => {
               id="file-input"
               type="file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              multiple={multipleMode}
               onChange={handleFileSelect}
               className="hidden"
-              aria-label={t.selectFile}
+              aria-label={multipleMode ? '选择多个文件' : t.selectFile}
             />
 
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600 mb-2">支持格式: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
-              <p className="text-sm text-gray-500">最大文件大小: 10MB</p>
+              <p className="text-sm text-gray-500">
+                最大文件大小: 10MB {multipleMode ? '| 支持批量选择和上传' : ''}
+              </p>
+              {multipleMode && (
+                <p className="text-xs text-blue-600 mt-1">
+                  ✨ 多文件模式：选择文件后将加入上传队列，可批量处理
+                </p>
+              )}
             </div>
           </div>
         ) : (

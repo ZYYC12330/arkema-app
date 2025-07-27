@@ -1,3 +1,8 @@
+/**
+ * @file orderService.ts
+ * @description 订单服务，封装了与订单相关的 API 调用和本地存储逻辑。
+ */
+
 import { BasicOrderInfo, ExtendedOrderInfo, CompleteOrderInfo, OrderStatus, OrderProcessingPhase } from '../types';
 
 const API_BASE_URL = 'https://demo.langcore.cn';
@@ -5,12 +10,19 @@ const API_TOKEN = 'sk-zzvwbcaxoss3';
 
 // 本地存储键名
 const ORDER_STATUS_KEY = 'arkema_order_status';
+const ORDER_INFO_KEY = 'arkema_order_info';
 
+/**
+ * OrderService 类
+ * 
+ * @description 提供了一组静态方法，用于处理订单的各个方面，
+ * 包括从文件提取信息、生成内部编号、提交订单以及在本地存储中管理订单状态和数据。
+ */
 export class OrderService {
   /**
-   * 将ISO日期格式转换为前端显示格式 (YYYY-MM-DD)
-   * @param isoDate ISO日期字符串
-   * @returns 格式化的日期字符串
+   * 将 ISO 日期格式转换为前端显示格式 (YYYY-MM-DD)
+   * @param isoDate ISO 日期字符串
+   * @returns 格式化的日期字符串，如果输入无效则返回空字符串
    */
   private static formatDateForDisplay(isoDate: string): string {
     if (!isoDate) return '';
@@ -29,9 +41,11 @@ export class OrderService {
   }
 
   /**
-   * 从PDF文件提取基本订单信息
-   * @param fileId 文件ID（从公网服务器获取的fileId）
+   * 从 PDF 文件提取基本订单信息
+   * @param fileId 从公网服务器获取的文件 ID
    * @param fileName 文件名
+   * @returns 包含基本订单信息的 Promise
+   * @throws 如果 API 请求失败或返回格式不正确，则抛出错误
    */
   static async extractBasicOrderInfo(fileId: string, fileName: string): Promise<BasicOrderInfo> {
     console.log('🔍 开始提取订单信息:', { fileId, fileName });
@@ -107,6 +121,9 @@ export class OrderService {
 
   /**
    * 生成内部编号等扩展信息
+   * @param basicInfo 基本订单信息
+   * @returns 包含扩展订单信息的 Promise
+   * @description **注意:** 当前使用模拟数据和延迟来模拟 API 调用。
    */
   static async generateExtendedInfo(basicInfo: BasicOrderInfo): Promise<ExtendedOrderInfo> {
     // TODO: 这里应该调用实际的API来生成内部编号
@@ -128,6 +145,8 @@ export class OrderService {
 
   /**
    * 提交完整订单到数据库
+   * @param orderInfo 完整的订单信息
+   * @returns 包含操作结果的 Promise
    */
   static async submitOrder(orderInfo: CompleteOrderInfo): Promise<{ success: boolean; orderId?: string; message?: string }> {
     console.log('🔧 OrderService.submitOrder 开始执行...');
@@ -143,7 +162,7 @@ export class OrderService {
       
       console.log('📤 请求体数据:', requestBody);
       
-      // TODO: 替换为实际的数据库API端点
+      // 实际的读取数据库API端点
       const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmdczxv6f0msbmwb70fatc941`, {
         method: 'POST',
         headers: {  
@@ -193,7 +212,9 @@ export class OrderService {
   }
 
   /**
-   * 获取订单状态
+   * 从本地存储获取指定文件的订单状态
+   * @param fileName 文件名
+   * @returns 订单状态对象，如果不存在则返回 null
    */
   static getOrderStatus(fileName: string): OrderStatus | null {
     const statusData = localStorage.getItem(ORDER_STATUS_KEY);
@@ -208,7 +229,10 @@ export class OrderService {
   }
 
   /**
-   * 更新订单状态
+   * 更新本地存储中的订单状态
+   * @param fileName 文件名
+   * @param phase 新的处理阶段
+   * @param isSubmitted 是否已提交
    */
   static updateOrderStatus(
     fileName: string, 
@@ -238,30 +262,105 @@ export class OrderService {
   }
 
   /**
-   * 检查订单是否已提交
+   * 检查指定文件的订单是否已提交
+   * @param fileName 文件名
+   * @returns 如果订单已提交则返回 true，否则返回 false
    */
   static isOrderSubmitted(fileName: string): boolean {
     const status = this.getOrderStatus(fileName);
     return status?.isSubmitted || false;
   }
 
-  // 私有方法：生成模拟的内部编号
+  /**
+   * 保存完整的订单信息到本地存储
+   * @param fileName 文件名
+   * @param basicInfo 基本订单信息
+   * @param extendedInfo 扩展订单信息
+   */
+  static saveOrderInfo(
+    fileName: string, 
+    basicInfo: BasicOrderInfo, 
+    extendedInfo: ExtendedOrderInfo
+  ): void {
+    const orderInfoData = localStorage.getItem(ORDER_INFO_KEY);
+    let allOrderInfo: Record<string, { basicInfo: BasicOrderInfo; extendedInfo: ExtendedOrderInfo }> = {};
+
+    if (orderInfoData) {
+      try {
+        allOrderInfo = JSON.parse(orderInfoData);
+      } catch {
+        allOrderInfo = {};
+      }
+    }
+
+    allOrderInfo[fileName] = {
+      basicInfo,
+      extendedInfo
+    };
+
+    localStorage.setItem(ORDER_INFO_KEY, JSON.stringify(allOrderInfo));
+    console.log('💾 订单信息已保存到本地存储:', fileName);
+  }
+
+  /**
+   * 从本地存储获取已保存的订单信息
+   * @param fileName 文件名
+   * @returns 包含基本和扩展信息的对象，如果不存在则返回 null
+   */
+  static getSavedOrderInfo(fileName: string): { basicInfo: BasicOrderInfo; extendedInfo: ExtendedOrderInfo } | null {
+    const orderInfoData = localStorage.getItem(ORDER_INFO_KEY);
+    if (!orderInfoData) {
+      return null;
+    }
+
+    try {
+      const allOrderInfo = JSON.parse(orderInfoData);
+      return allOrderInfo[fileName] || null;
+    } catch {
+      return null;
+    }
+  }
+
+  //
+  // --- 私有模拟数据生成方法 ---
+  //
+
+  /**
+   * 根据售达方名称生成模拟的售达方代码
+   * @param soldToName 售达方名称
+   * @returns 模拟的售达方代码
+   */
   private static generateSoldToCode(soldToName: string): string {
     const hash = this.simpleHash(soldToName);
     return `ST${hash.toString().padStart(6, '0')}`;
   }
 
+  /**
+   * 根据送达方名称生成模拟的送达方代码
+   * @param shipToName 送达方名称
+   * @returns 模拟的送达方代码
+   */
   private static generateShipToCode(shipToName: string): string {
     const hash = this.simpleHash(shipToName);
     return `SH${hash.toString().padStart(6, '0')}`;
   }
 
+  /**
+   * 根据供应商名称生成模拟的销售区域
+   * @param vendorName 供应商名称
+   * @returns 模拟的销售区域
+   */
   private static generateSalesArea(vendorName: string): string {
     const areas = ['华北', '华东', '华南', '华中', '西南', '西北', '东北'];
     const hash = this.simpleHash(vendorName);
     return areas[hash % areas.length];
   }
 
+  /**
+   * 根据交货日期计算模拟的“此日期前交货”
+   * @param deliveryDate 交货日期
+   * @returns 计算后的日期字符串
+   */
   private static calculateDeliveryByDate(deliveryDate: string): string {
     if (!deliveryDate) return '';
     
@@ -288,11 +387,21 @@ export class OrderService {
     }
   }
 
+  /**
+   * 根据物料号生成模拟的产品代码
+   * @param itemNumber 物料号
+   * @returns 模拟的产品代码
+   */
   private static generateProductCode(itemNumber: string): string {
     const hash = this.simpleHash(itemNumber);
     return `AK${hash.toString().padStart(6, '0')}`;
   }
 
+  /**
+   * 一个简单的哈希函数，用于生成模拟数据
+   * @param str 输入字符串
+   * @returns 一个数字哈希值
+   */
   private static simpleHash(str: string): number {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
