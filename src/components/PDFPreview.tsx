@@ -15,14 +15,14 @@ const PDFPreview: React.FC<PDFPreviewProps> = ({ uploadedFile, fileUrl, highligh
 
   if (!fileToPreview) {
     return (
-      <div className="w-2/3 flex items-center justify-center bg-gray-100 rounded-md">
+      <div className="flex-1 flex items-center justify-center bg-gray-100 rounded-md">
         <p className="text-gray-500">没有可预览的文件</p>
       </div>
     );
   }
   
   return (
-    <div className="w-2/3">
+    <div className="flex-1">
       <PDFViewer 
         file={fileToPreview} 
         height="calc(100vh - 120px)" 

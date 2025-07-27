@@ -147,7 +147,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="mb-4 relative">
         <div className="flex items-center justify-between mb-1">
           <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-            <Icon icon={icon} className="flex-shrink-0 text-primary" />
+            <Icon icon={icon} className="flex-shrink-0 text-primary" aria-label={`${label}图标`} />
             <span>{label}</span>
           </label>
           
@@ -163,7 +163,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           aria-label={`${label} 输入框`}
           startContent={
             isLoading ? (
-              <Icon icon="lucide:loader-2" className="animate-spin text-primary" />
+              <Icon icon="lucide:loader-2" className="animate-spin text-primary" aria-label="加载中" />
             ) : null
           }
         />
@@ -192,7 +192,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="mb-4 relative">
         <div className="flex items-center justify-between mb-1">
           <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-            <Icon icon={icon} className="flex-shrink-0 text-primary" />
+            <Icon icon={icon} className="flex-shrink-0 text-primary" aria-label={`${label}图标`} />
             <span>{label}</span>
           </label>
           
@@ -208,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           aria-label={`${label} 输入框`}
           startContent={
             isGeneratingCodes ? (
-              <Icon icon="lucide:loader-2" className="animate-spin text-primary" />
+              <Icon icon="lucide:loader-2" className="animate-spin text-primary" aria-label="生成中" />
             ) : null
           }
         />
@@ -334,12 +334,12 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <Card aria-label="导航侧边栏" className="w-80 flex-shrink-0 h-full rounded-md shadow-md mr-4 bg-white overflow-y-auto">
+    <Card aria-label="导航侧边栏" className="w-[30%] flex-shrink-0 h-full rounded-md shadow-md mr-4 bg-white overflow-y-auto">
       <CardBody className="p-6 flex flex-col">
         {/* 标题和状态 */}
         <div className="mb-6">
           <h2 className="text-xl font-bold mb-3 text-primary flex items-center gap-2">
-            <Icon icon={phaseInfo.icon} className="flex-shrink-0 text-xl" />
+            <Icon icon={phaseInfo.icon} className="flex-shrink-0 text-xl" aria-label={`${phaseInfo.title}图标`} />
             <span>{phaseInfo.title}</span>
           </h2>
         </div>
@@ -350,7 +350,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1">
                 <label id="file-select-label" className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <Icon icon="lucide:file-search" className="flex-shrink-0 text-primary" />
+                  <Icon icon="lucide:file-search" className="flex-shrink-0 text-primary" aria-label="文件搜索图标" />
                   <span>{t.currentFile}</span>
                 </label>
                 <Select
@@ -374,7 +374,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     innerWrapper: "flex items-center gap-2",
                     selectorIcon: "flex items-center"
                   }}
-                  startContent={<Icon icon="lucide:folder" className="text-gray-500 flex-shrink-0 rounded-lg" />}
+                  startContent={<Icon icon="lucide:folder" className="text-gray-500 flex-shrink-0 rounded-lg" aria-label="文件夹图标" />}
                 >
                   {fileList.map((fileName) => {
                     // 检查文件是否已提交
@@ -391,7 +391,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <div className="flex items-center gap-2">
                           {fileName}
                           {isFileSubmitted && (
-                            <Icon icon="lucide:check-circle" className="text-green-500 text-sm" />
+                            <Icon icon="lucide:check-circle" className="text-green-500 text-sm" aria-label="已提交图标" />
                           )}
                         </div>
                       </SelectItem>
@@ -570,6 +570,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <Icon 
                   icon={showPDFPreview ? "lucide:upload" : "lucide:eye"} 
                   className="text-base"
+                  aria-label={showPDFPreview ? "上传图标" : "预览图标"}
                 />
                 <span>{showPDFPreview ? t.fileUpload : t.pdfPreview}</span>
               </Button>
@@ -586,7 +587,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 isDisabled={isLoading || isGeneratingCodes}
                 aria-label="生成内部编号"
               >
-                <Icon icon="lucide:settings" className="text-base text-white" />
+                <Icon icon="lucide:settings" className="text-base text-white" aria-label="设置图标" />
                 <span>{isGeneratingCodes ? t.generatingCodes : t.generateInternalCodes}</span>
               </Button>
             )}
@@ -603,7 +604,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   isDisabled={isSubmittingOrder}
                   aria-label="返回基本信息编辑"
                 >
-                  <Icon icon="lucide:arrow-left" className="text-base" />
+                  <Icon icon="lucide:arrow-left" className="text-base" aria-label="返回图标" />
                   <span>{t.backToEdit}</span>
                 </Button>
                 <Button 
@@ -615,7 +616,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   isDisabled={isSubmittingOrder}
                   aria-label="提交订单"
                 >
-                  <Icon icon="lucide:check" className="text-base text-white" />
+                  <Icon icon="lucide:check" className="text-base text-white" aria-label="确认图标" />
                   <span>{isSubmittingOrder ? t.submittingOrder : t.confirmSubmit}</span>
                 </Button>
               </>
@@ -631,7 +632,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onPress={onBackToBasicInfo}
                 aria-label={"退回"}
               >
-                <Icon icon="lucide:arrow-left-circle" className="text-base" />
+                <Icon icon="lucide:arrow-left-circle" className="text-base" aria-label="退回图标" />
                 <span>{language === 'zh' ? '退回' : 'Return'}</span>
               </Button>
             )}

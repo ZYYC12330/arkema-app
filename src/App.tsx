@@ -3,6 +3,22 @@
  * @description 应用的主组件，负责整体布局、状态管理和组件协调。
  */
 
+// 只在开发环境生效
+const isDevelopment = (window as any)?.process?.env?.NODE_ENV === 'development' || 
+                     (globalThis as any)?.process?.env?.NODE_ENV === 'development' ||
+                     import.meta.env?.DEV;
+
+if (isDevelopment) {
+  const originalError = console.error;
+  console.error = (...args) => {
+    // 过滤包含特定信息的警告
+    if (args[0] && typeof args[0] === 'string' && args[0].includes('If you do not provide a visible label')) {
+      return;
+    }
+    originalError.call(console, ...args);
+  };
+}
+
 import React from 'react';
 import { Navbar, NavbarBrand, NavbarContent, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
@@ -30,6 +46,7 @@ const AppContent: React.FC = () => {
     fileList,
     isLoadingFiles,
     fileListError,
+    clearFileListError,
     currentFileIndex,
     currentFileUrl,
     uploadedFile,
@@ -52,6 +69,7 @@ const AppContent: React.FC = () => {
     isGeneratingCodes,
     isSubmittingOrder,
     error,
+    clearError,
     fetchBasicOrderInfo,
     handleGenerateExtendedInfo,
     handleSubmitOrder,
@@ -176,7 +194,7 @@ const AppContent: React.FC = () => {
       <div className="flex flex-col h-screen bg-gray-100">
         <Navbar className="border-b">
           <NavbarBrand>
-            <Icon icon="lucide:file-text" className="text-2xl text-primary" />
+            <Icon icon="lucide:file-text" className="text-2xl text-primary" aria-label="文档图标" />
             <p className="font-bold text-inherit ml-2">{t.appTitle}</p>
           </NavbarBrand>
         </Navbar>
@@ -195,20 +213,21 @@ const AppContent: React.FC = () => {
       <div className="flex flex-col h-screen bg-gray-100">
         <Navbar className="border-b">
           <NavbarBrand>
-            <Icon icon="lucide:file-text" className="text-2xl text-primary" />
+            <Icon icon="lucide:file-text" className="text-2xl text-primary" aria-label="文档图标" />
             <p className="font-bold text-inherit ml-2">{t.appTitle}</p>
           </NavbarBrand>
         </Navbar>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Icon icon="lucide:alert-circle" className="text-4xl text-red-500 mx-auto mb-4" />
+            <Icon icon="lucide:alert-circle" className="text-4xl text-red-500 mx-auto mb-4" aria-label="错误图标" />
             <p className="text-red-600 mb-4">{fileListError}</p>
             <Button 
               color="primary" 
               onPress={() => window.location.reload()}
               className="flex items-center gap-2"
+              aria-label="重新加载页面"
             >
-              <Icon icon="lucide:refresh-cw" />
+              <Icon icon="lucide:refresh-cw" aria-label="刷新图标" />
               重新加载
             </Button>
           </div>
@@ -222,7 +241,7 @@ const AppContent: React.FC = () => {
       {/* 导航栏 */}
       <Navbar isBordered className="border-b-1 bg-primary text-white">
         <NavbarBrand>
-          <Icon icon="lucide:file-text" className="text-2xl mr-2 ml-4" />
+          <Icon icon="lucide:file-text" className="text-2xl mr-2 ml-4" aria-label="应用图标" />
           <p className="font-bold text-inherit">{t.appTitle}</p>
         </NavbarBrand>
         <NavbarContent justify="end" className="pr-4">
@@ -232,8 +251,9 @@ const AppContent: React.FC = () => {
             variant="flat"
             onPress={() => setUploadMode(uploadMode === 'single' ? 'multi' : 'single')}
             className="mr-2 flex items-center gap-1"
+            aria-label={`切换到${uploadMode === 'multi' ? '单文件' : '多文件'}模式`}
           >
-            <Icon icon={uploadMode === 'multi' ? "lucide:files" : "lucide:file"} className="text-sm" />
+            <Icon icon={uploadMode === 'multi' ? "lucide:files" : "lucide:file"} className="text-sm" aria-label={uploadMode === 'multi' ? "多文件图标" : "单文件图标"} />
             <span>{uploadMode === 'multi' ? t.multiFileMode : t.singleFileMode}</span>
           </Button>
           <Button
@@ -242,8 +262,9 @@ const AppContent: React.FC = () => {
             variant="flat"
             onPress={toggleLanguage}
             className="mr-2 flex items-center gap-1"
+            aria-label={`切换到${language === 'zh' ? '英文' : '中文'}`}
           >
-            <Icon icon="lucide:globe" className="text-sm" />
+            <Icon icon="lucide:globe" className="text-sm" aria-label="语言图标" />
             <span>{language === 'zh' ? 'EN' : '中文'}</span>
           </Button>
         </NavbarContent>
@@ -274,14 +295,14 @@ const AppContent: React.FC = () => {
           isSubmittingOrder={isSubmittingOrder}
         />
 
-          {/* 主视图 */}
+        {/* 主视图 */}
+        <div className="flex-1 min-h-0">
           {fileList.length === 0 || !currentFileUrl || !showPDFPreview ? (
             uploadMode === 'multi' ? (
               <MultiFileUpload 
                 onFileUploaded={handleFileUploaded} 
                 onError={handleFileUploadError}
                 showQueue={true}
-                queuePosition="side"
               />
             ) : (
               <FileUpload onFileUploaded={handleFileUploaded} onError={handleFileUploadError} />
@@ -293,6 +314,7 @@ const AppContent: React.FC = () => {
               highlightText={getHighlightText()} // 传递高亮文本
             />
           )}
+        </div>
       </div>
 
       {/* 成功弹窗 */}
@@ -306,16 +328,21 @@ const AppContent: React.FC = () => {
       {displayError && (
         <div className="fixed bottom-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-50 max-w-md">
           <div className="flex items-center gap-2">
-            <Icon icon="lucide:alert-circle" className="text-lg" />
+            <Icon icon="lucide:alert-circle" className="text-lg" aria-label="警告图标" />
             <span className="flex-1">{displayError}</span>
             <Button
               size="sm"
               variant="flat"
               color="default"
-              onPress={() => setInternalError(null)}
+              onPress={() => {
+                setInternalError(null);
+                clearFileListError();
+                clearError();
+              }}
               className="text-white hover:bg-red-600"
+              aria-label="关闭错误提示"
             >
-              <Icon icon="lucide:x" />
+              <Icon icon="lucide:x" aria-label="关闭图标" />
             </Button>
           </div>
         </div>

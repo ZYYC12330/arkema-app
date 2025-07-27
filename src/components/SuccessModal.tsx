@@ -27,7 +27,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose, fileName }
           <ModalBody className="p-8 text-center">
             <div className="mb-4">
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-pulse">
-                <Icon icon="lucide:check" className="text-3xl text-green-600 animate-ping" />
+                <Icon icon="lucide:check" className="text-3xl text-green-600 animate-ping" aria-label="成功图标" />
               </div>
             </div>
             
@@ -42,7 +42,7 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose, fileName }
             {fileName && (
               <div className="bg-gray-50 rounded-lg p-3 mb-4">
                 <p className="text-sm text-gray-700 flex items-center justify-center">
-                  <Icon icon="lucide:file" className="mr-2" />
+                  <Icon icon="lucide:file" className="mr-2" aria-label="文件图标" />
                   {fileName}
                 </p>
               </div>
@@ -54,8 +54,9 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose, fileName }
                 onPress={onCloseModal}
                 className="transition-transform hover:scale-105 active:scale-95"
                 size="lg"
+                aria-label="处理下一个文件"
               >
-                <Icon icon="lucide:arrow-right" className="mr-2" />
+                <Icon icon="lucide:arrow-right" className="mr-2" aria-label="下一个图标" />
                 {t.nextFile}
               </Button>
             </div>

@@ -27,6 +27,8 @@ interface UseOrderReturn {
   isSubmittingOrder: boolean;
   /** 错误信息 */
   error: string | null;
+  /** 清除错误信息 */
+  clearError: () => void;
   /** 提取基本订单信息 */
   fetchBasicOrderInfo: (fileId: string, fileName: string, keepSubmittedStatus?: boolean) => Promise<void>;
   /** 生成扩展信息 */
@@ -295,6 +297,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
     isGeneratingCodes,
     isSubmittingOrder,
     error,
+    clearError: () => setError(null),
     fetchBasicOrderInfo,
     handleGenerateExtendedInfo,
     handleSubmitOrder,

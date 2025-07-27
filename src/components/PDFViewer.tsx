@@ -176,7 +176,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           <div className="mb-4 p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <Icon icon="lucide:file-text" className="text-primary mr-2" />
+                <Icon icon="lucide:file-text" className="text-primary mr-2" aria-label="PDF文件图标" />
                                    <div>
                      <p className="font-medium text-gray-900">
                        {file instanceof File ? file.name : (typeof file === 'string' ? file.split('/').pop() : '在线文档')}
@@ -221,7 +221,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
             // 空状态
             <div className="h-full flex items-center justify-center bg-gray-50">
               <div className="text-center">
-                <Icon icon="lucide:file-text" className="text-6xl text-gray-400 mb-4 mx-auto" />
+                <Icon icon="lucide:file-text" className="text-6xl text-gray-400 mb-4 mx-auto" aria-label="选择PDF文件图标" />
                 <p className="text-lg font-medium text-gray-700 mb-2">
                   {t?.selectPDFFile || '选择 PDF 文件'}
                 </p>
@@ -234,7 +234,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
             // 错误状态
             <div className="h-full flex items-center justify-center bg-red-50">
               <div className="text-center">
-                <Icon icon="lucide:alert-circle" className="text-6xl text-red-400 mb-4 mx-auto" />
+                <Icon icon="lucide:alert-circle" className="text-6xl text-red-400 mb-4 mx-auto" aria-label="错误图标" />
                 <p className="text-lg font-medium text-red-700 mb-2">加载失败</p>
                 <p className="text-sm text-red-600 mb-4">{error}</p>
                 <Button
@@ -244,8 +244,9 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
                     setError(null);
                     setIsLoading(true);
                   }}
+                  aria-label="重新加载PDF"
                 >
-                  <Icon icon="lucide:refresh-cw" className="mr-2" />
+                  <Icon icon="lucide:refresh-cw" className="mr-2" aria-label="刷新图标" />
                   重新加载
                 </Button>
               </div>

@@ -58,7 +58,7 @@ export class OrderService {
       "runMode": "sync"
     });
 
-    console.log('📤 发送给API的数据:', raw);
+    console.log('📤 发送给[要素提取]工作流的API数据:', raw);
 
     const requestOptions = {
       method: 'POST',

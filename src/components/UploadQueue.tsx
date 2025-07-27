@@ -114,7 +114,7 @@ const QueueItem: React.FC<{
             size="sm"
             color={statusInfo.color as any}
             variant="flat"
-            startContent={<Icon icon={statusInfo.icon} className="text-xs" />}
+            startContent={<Icon icon={statusInfo.icon} className="text-xs" aria-label={`${statusInfo.text}图标`} />}
           >
             {statusInfo.text}
           </Chip>
@@ -128,7 +128,7 @@ const QueueItem: React.FC<{
               onPress={() => onRemove(item.id)}
               aria-label="移除文件"
             >
-              <Icon icon="lucide:trash-2" className="text-sm" />
+              <Icon icon="lucide:trash-2" className="text-sm" aria-label="删除图标" />
             </Button>
           )}
         </div>
@@ -181,7 +181,7 @@ const UploadQueue: React.FC<UploadQueueProps> = ({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-2">
-            <Icon icon="lucide:list" className="text-lg text-primary" />
+            <Icon icon="lucide:list" className="text-lg text-primary" aria-label="队列图标" />
             <h3 className="text-lg font-semibold text-primary">{t.uploadQueue}</h3>
           </div>
           
@@ -228,8 +228,9 @@ const UploadQueue: React.FC<UploadQueueProps> = ({
                 onPress={onStartQueue}
                 isDisabled={pendingCount === 0}
                 className="flex-1"
+                aria-label="开始上传"
               >
-                <Icon icon="lucide:play" className="text-sm" />
+                <Icon icon="lucide:play" className="text-sm" aria-label="播放图标" />
                 {t.startUpload} ({pendingCount})
               </Button>
             ) : (
@@ -238,8 +239,9 @@ const UploadQueue: React.FC<UploadQueueProps> = ({
                 color="warning"
                 onPress={onPauseQueue}
                 className="flex-1"
+                aria-label="暂停上传"
               >
-                <Icon icon="lucide:pause" className="text-sm" />
+                <Icon icon="lucide:pause" className="text-sm" aria-label="暂停图标" />
                 {t.pauseUpload} ({uploadingCount} {t.filesUploading})
               </Button>
             )}
@@ -250,8 +252,9 @@ const UploadQueue: React.FC<UploadQueueProps> = ({
                 color="secondary"
                 variant="flat"
                 onPress={onRetryFailed}
+                aria-label="重试失败文件"
               >
-                <Icon icon="lucide:refresh-cw" className="text-sm" />
+                <Icon icon="lucide:refresh-cw" className="text-sm" aria-label="刷新图标" />
                 {t.retryFailed}
               </Button>
             )}
@@ -262,8 +265,9 @@ const UploadQueue: React.FC<UploadQueueProps> = ({
               variant="flat"
               onPress={onClearQueue}
               isDisabled={queueState.isProcessing}
+              aria-label="清空队列"
             >
-              <Icon icon="lucide:trash-2" className="text-sm" />
+              <Icon icon="lucide:trash-2" className="text-sm" aria-label="清空图标" />
               {t.clearQueue}
             </Button>
           </div>
@@ -281,7 +285,7 @@ const UploadQueue: React.FC<UploadQueueProps> = ({
             ))
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <Icon icon="lucide:inbox" className="text-4xl mb-2" />
+              <Icon icon="lucide:inbox" className="text-4xl mb-2" aria-label="空队列图标" />
               <p className="text-sm">暂无上传任务</p>
               <p className="text-xs mt-1">选择文件后将显示在这里</p>
             </div>

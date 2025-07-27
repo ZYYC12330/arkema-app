@@ -21,7 +21,7 @@ const API_CONFIG = {
  */
 interface FileUploadProps {
   /** 文件上传成功的回调 */
-  onFileUploaded: (file: File, fileInfo: { fileId: string; url: string; publicUrl?: string }) => void;
+  onFileUploaded: (file: File, fileInfo: { fileId: string; url: string; publicUrl: string }) => void;
   /** 文件上传失败的回调 */
   onError?: (error: string) => void;
   /** 多文件选择的回调 */
@@ -142,7 +142,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
       }
       
       const result = await response.text();
-      console.log('本地服务器上传响应:', result);
       
       try {
         const responseData: UploadResponse = JSON.parse(result);
@@ -181,8 +180,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
       
       const uploadResult = await uploadResponse.json();
       
-      if (uploadResult.success && uploadResult.data && uploadResult.data.url) {
-        return uploadResult.data.url;
+      if (uploadResult.data.fileId) {
+        return uploadResult.data.fileId;
       } else {
         throw new Error('公网服务器响应格式不正确');
       }
@@ -210,7 +209,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     ];
     
     if (!allowedTypes.includes(file.type)) {
-      const message = '不支持的文件格式，请上传 PDF、DOC、DOCX、XLS、XLSX 或图片文件';
+      const message = '不支持的文件格式，请上传 PDF 文件';
       setUploadError(message);
       onError?.(message);
       return;
@@ -244,10 +243,6 @@ const FileUpload: React.FC<FileUploadProps> = ({
       
       // 先上传到本地服务器
       const localResponse = await uploadFileToLocalServer(file);
-      
-      if (!localResponse.data?.fileId) {
-        throw new Error(localResponse.msg || '本地服务器上传失败，未返回文件ID');
-      }
 
       // 再上传到公网服务器
       const publicUrl = await uploadFileToPublicServer(file);
@@ -258,7 +253,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
       console.log('文件上传完成:', {
         fileId: localResponse.data.fileId,
         localUrl: localResponse.data.url,
-        publicUrl
+        publicUrl: publicUrl
       });
 
       // 上传成功，通知父组件
@@ -267,9 +262,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
         onFileUploaded(file, {
           fileId: localResponse.data!.fileId!,
           url: localResponse.data!.url!,
-          publicUrl: publicUrl || undefined
+          publicUrl: publicUrl || ''
         });
-        console.log('文件上传成功，FileId:', localResponse.data!.fileId);
       }, 500);
       
     } catch (error) {
@@ -283,23 +277,23 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <Card className="flex-1 rounded-md shadow-md bg-white">
-      <CardBody className="p-6">
-        <div className="flex justify-between items-center mb-6">
+    <Card className="flex-1 h-full rounded-md shadow-md bg-white">
+      <CardBody className="p-6 h-full flex flex-col">
+        <div className="flex justify-between items-center mb-6 flex-shrink-0">
           <h2 className="text-xl font-bold text-primary flex items-center">
-            <Icon icon="lucide:upload" className="mr-2" />
+            <Icon icon="lucide:upload" className="mr-2" aria-label="上传图标" />
             {t.fileUpload}
           </h2>
         </div>
 
         {!isUploading ? (
-          <div className="h-full flex flex-col items-center justify-center">
+          <div className="flex-1 flex flex-col items-center justify-center">
             {uploadError && (
               <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-center">
-                  <Icon icon="lucide:alert-circle" className="text-red-500 mr-2" />
-                  <p className="text-red-700 text-sm">{uploadError}</p>
-                </div>
+                              <div className="flex items-center">
+                <Icon icon="lucide:alert-circle" className="text-red-500 mr-2" aria-label="错误图标" />
+                <p className="text-red-700 text-sm">{uploadError}</p>
+              </div>
               </div>
             )}
             
@@ -329,6 +323,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               <Icon 
                 icon={multipleMode ? "lucide:files" : "lucide:cloud-upload"} 
                 className="text-6xl text-gray-400 mb-4" 
+                aria-label={multipleMode ? "多文件上传图标" : "单文件上传图标"}
               />
               <p className="text-lg font-medium text-gray-700 mb-2">
                 {multipleMode ? '拖放多个文件到此处' : t.uploadArea}
@@ -336,8 +331,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
               <p className="text-sm text-gray-500 mb-4">
                 {multipleMode ? '支持同时选择多个文件批量上传' : t.uploadInstruction}
               </p>
-              <Button color="primary" variant="flat" size="lg">
-                <Icon icon={multipleMode ? "lucide:folder-plus" : "lucide:file-plus"} className="mr-2" />
+              <Button color="primary" variant="flat" size="lg" aria-label={multipleMode ? '选择多个文件' : t.selectFile}>
+                <Icon icon={multipleMode ? "lucide:folder-plus" : "lucide:file-plus"} className="mr-2" aria-label={multipleMode ? "文件夹图标" : "文件图标"} />
                 {multipleMode ? '选择多个文件' : t.selectFile}
               </Button>
             </div>
@@ -352,7 +347,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
               aria-label={multipleMode ? '选择多个文件' : t.selectFile}
             />
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center flex-shrink-0">
               <p className="text-sm text-gray-600 mb-2">支持格式: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
               <p className="text-sm text-gray-500">
                 最大文件大小: 10MB {multipleMode ? '| 支持批量选择和上传' : ''}
@@ -365,8 +360,8 @@ const FileUpload: React.FC<FileUploadProps> = ({
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center">
-            <Icon icon="lucide:upload-cloud" className="text-6xl text-primary mb-4" />
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <Icon icon="lucide:upload-cloud" className="text-6xl text-primary mb-4" aria-label="上传中图标" />
             <h3 className="text-lg font-medium text-gray-700 mb-4">正在上传文件...</h3>
             <div className="w-full max-w-md">
               <Progress 

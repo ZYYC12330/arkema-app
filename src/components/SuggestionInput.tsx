@@ -81,13 +81,14 @@ const SuggestionInput: React.FC<SuggestionInputProps> = ({
       placeholder={placeholder}
       size="sm"
       className="w-full"
+      aria-label={placeholder || (language === 'zh' ? 'AI建议输入框' : 'AI Suggestion Input')}
       classNames={{
         clearButton: "h-4 w-4", // 清除按钮大小
         selectorButton: "h-4 w-4", // 下拉按钮大小
         popoverContent: "bg-white border border-gray-200 rounded-md shadow-lg",
       }}
       startContent={
-        isLoading ? <Icon icon="lucide:loader-2" className="animate-spin text-primary" /> : null
+        isLoading ? <Icon icon="lucide:loader-2" className="animate-spin text-primary" aria-label="加载中" /> : null
       }
     >
       {(item) => (

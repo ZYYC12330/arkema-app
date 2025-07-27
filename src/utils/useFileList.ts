@@ -20,6 +20,8 @@ interface UseFileListReturn {
   isLoadingFiles: boolean;
   /** 文件列表加载错误信息 */
   fileListError: string | null;
+  /** 清除文件列表错误 */
+  clearFileListError: () => void;
   /** 当前选中的文件索引 */
   currentFileIndex: number;
   /** 当前文件的 URL */
@@ -211,6 +213,7 @@ export const useFileList = (): UseFileListReturn => {
     fileList,
     isLoadingFiles,
     fileListError,
+    clearFileListError: () => setFileListError(null),
     currentFileIndex,
     currentFileUrl,
     uploadedFile,

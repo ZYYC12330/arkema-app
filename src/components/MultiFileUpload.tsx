@@ -21,8 +21,6 @@ interface MultiFileUploadProps {
   onError?: (error: string) => void;
   /** 是否显示队列 */
   showQueue?: boolean;
-  /** 队列位置：'side' | 'bottom' */
-  queuePosition?: 'side' | 'bottom';
 }
 
 /**
@@ -31,8 +29,7 @@ interface MultiFileUploadProps {
 const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   onFileUploaded,
   onError,
-  showQueue = true,
-  queuePosition = 'side'
+  showQueue = true
 }) => {
   const { t } = useLanguage();
   
@@ -75,7 +72,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
   const [uploadMode, setUploadMode] = React.useState<'single' | 'multiple'>('multiple');
 
   const renderUploadArea = () => (
-    <div className="flex-1">
+    <div className="flex-1 h-full">
       {/* 文件上传区域 */}
       <FileUpload
         onFileUploaded={handleSingleFileUploaded}
@@ -100,7 +97,7 @@ const MultiFileUpload: React.FC<MultiFileUploadProps> = ({
 
   // 上下布局，各占50%
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col h-full gap-4 w-full">
       <div className="flex-1 min-h-0">
         {renderUploadArea()}
       </div>
