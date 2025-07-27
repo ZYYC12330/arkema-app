@@ -21,6 +21,8 @@ interface UseOrderReturn {
   extendedOrderInfo: ExtendedOrderInfo;
   /** 是否正在加载基本信息 */
   isLoading: boolean;
+  /** 加载进度 (0-100) */
+  loadingProgress: number;
   /** 是否正在生成内部编号 */
   isGeneratingCodes: boolean;
   /** 是否正在提交订单 */
@@ -68,15 +70,13 @@ const initialBasicOrderInfo: BasicOrderInfo = {
     itemQuantity: '',
     unitOfMeasure: '',
     unitPrice: '',
+    totalPrice: '',
 };
 
 // 初始扩展订单信息
 const initialExtendedOrderInfo: ExtendedOrderInfo = {
     arkemaSoldToCode: '',
     arkemaShipToCode: '',
-    vendorSalesArea: '',
-    deliveryByDate: '',
-    lineNumber: '',
     arkemaProductCode: '',
 };
 
@@ -93,6 +93,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
   const [extendedOrderInfo, setExtendedOrderInfo] = React.useState<ExtendedOrderInfo>(initialExtendedOrderInfo);
 
   const [isLoading, setIsLoading] = React.useState(false);
+  const [loadingProgress, setLoadingProgress] = React.useState(0);
   const [isGeneratingCodes, setIsGeneratingCodes] = React.useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -106,6 +107,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
     setCurrentPhase('basic_info');
     setOrderStatus(null);
     setError(null);
+    setLoadingProgress(0);
   }, []);
   
   /**
@@ -117,12 +119,23 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
   const fetchBasicOrderInfo = async (fileId: string, fileName: string, keepSubmittedStatus: boolean = false) => {
     if (!fileId) return;
 
+    const startTime = Date.now();
+    const MINIMUM_LOADING_TIME = 15000; // 15秒 - 可以调整这个值来设置动画时间
+
     setIsLoading(true);
+    setLoadingProgress(0);
     setError(null);
     
     if (!keepSubmittedStatus) {
       resetOrderInfo();
     }
+
+    // 启动进度更新器
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / MINIMUM_LOADING_TIME) * 100, 100);
+      setLoadingProgress(progress);
+    }, 50); // 每50ms更新一次进度 - 可以调整这个值
 
     try {
       const basicInfo = await OrderService.extractBasicOrderInfo(fileId, fileName);
@@ -142,12 +155,30 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
       if (keepSubmittedStatus) {
         setCurrentPhase('submitted');
       }
+
+      // 确保至少加载15秒
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = MINIMUM_LOADING_TIME - elapsedTime;
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+      }
+      
+          } catch (err) {
+        // 即使出错也要等够15秒
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = MINIMUM_LOADING_TIME - elapsedTime;
+        
+        if (remainingTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+        
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        clearInterval(progressInterval);
+        setLoadingProgress(100);
+        setIsLoading(false);
+      }
   };
 
   /**
@@ -294,6 +325,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
     basicOrderInfo,
     extendedOrderInfo,
     isLoading,
+    loadingProgress,
     isGeneratingCodes,
     isSubmittingOrder,
     error,

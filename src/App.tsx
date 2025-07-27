@@ -23,6 +23,28 @@ import React from 'react';
 import { Navbar, NavbarBrand, NavbarContent, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import Sidebar from './components/Sidebar';
+import { validateApiConfig } from './config/api';
+
+// 添加加载动画样式
+const loadingStyles = `
+  @keyframes loading-progress {
+    0% { width: 0%; }
+    20% { width: 30%; }
+    50% { width: 65%; }
+    80% { width: 90%; }
+    100% { width: 100%; }
+  }
+`;
+
+// 将样式注入到页面中
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = loadingStyles;
+  document.head.appendChild(styleElement);
+}
+
+// 验证API配置
+validateApiConfig();
 import PDFPreview from './components/PDFPreview';
 import FileUpload from './components/FileUpload';
 import MultiFileUpload from './components/MultiFileUpload';
@@ -66,6 +88,7 @@ const AppContent: React.FC = () => {
     basicOrderInfo,
     extendedOrderInfo,
     isLoading,
+    loadingProgress,
     isGeneratingCodes,
     isSubmittingOrder,
     error,
@@ -291,6 +314,7 @@ const AppContent: React.FC = () => {
           onToggleView={() => setShowPDFPreview(!showPDFPreview)}
           canToggleView={fileList.length > 0}
           isLoading={isLoading}
+          loadingProgress={loadingProgress}
           isGeneratingCodes={isGeneratingCodes}
           isSubmittingOrder={isSubmittingOrder}
         />
@@ -322,6 +346,12 @@ const AppContent: React.FC = () => {
         isOpen={showSuccessModal}
         onClose={handleSuccessModalClose}
         fileName={fileList[currentFileIndex]?.name || ''}
+        orderInfo={{
+          poNumber: basicOrderInfo.poNumber,
+          vendorName: basicOrderInfo.vendorName,
+          itemName: basicOrderInfo.itemName,
+          totalPrice: basicOrderInfo.totalPrice,
+        }}
       />
       
       {/* 错误提示 */}

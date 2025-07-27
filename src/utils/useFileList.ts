@@ -7,8 +7,7 @@ import React from 'react';
 import { FileInfo } from '../config/files';
 import { getFileList, getFileByName } from '../config/files';
 import { OrderService } from './orderService';
-
-const API_TOKEN = 'sk-zzvwbcaxoss3';
+import { API_CONFIG } from '../config/api';
 
 /**
  * useFileList Hook 的返回值接口
@@ -186,9 +185,9 @@ export const useFileList = (): UseFileListReturn => {
             const formData = new FormData();
             formData.append('file', fileBlob, fileName);
             
-            const uploadResponse = await fetch('https://demo.langcore.cn/api/file', {
+            const uploadResponse = await fetch(API_CONFIG.publicUploadEndpoint, {
               method: 'POST',
-              headers: { 'Authorization': `Bearer ${API_TOKEN}` },
+              headers: { 'Authorization': `Bearer ${API_CONFIG.authToken}` },
               body: formData,
             });
             

@@ -1,8 +1,10 @@
 // 文件上传服务
 // 统一管理文件上传到公网服务器的逻辑
 
-const API_BASE_URL = 'https://demo.langcore.cn';
-const API_TOKEN = 'sk-zzvwbcaxoss3';
+import { API_CONFIG } from '../config/api';
+
+const API_BASE_URL = API_CONFIG.publicUploadEndpoint.replace('/api/file', '');
+const API_TOKEN = API_CONFIG.authToken;
 
 export interface UploadResponse {
   data?: {

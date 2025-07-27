@@ -2,7 +2,7 @@ import { TranslationTexts } from '../types';
 
 export const translations: Record<'zh' | 'en', TranslationTexts> = {
   zh: {
-    appTitle: '自动创建 SAP 销售订单',
+    appTitle: 'Arkema - 自动创建 SAP 销售订单',
     extractedInfo: '提取的信息',
     soldToName: '买方名称',
     soldToAddress: '买方地址',
@@ -18,12 +18,10 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     itemQuantity: '商品数量',
     unitOfMeasure: '单位',
     unitPrice: '销售单价',
+    totalPrice: '总价',
     // 新增字段翻译
     arkemaSoldToCode: 'Arkema 买方代码',
     arkemaShipToCode: 'Arkema 收货方代码',
-    vendorSalesArea: '供应商销售区域',
-    deliveryByDate: '最迟交货日期',
-    lineNumber: '行号',
     arkemaProductCode: 'Arkema 产品代码',
     // 界面状态翻译
     nextStep: '下一步',
@@ -66,7 +64,6 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     selectPDFFile: '选择 PDF 文件',
     loadError: '加载 PDF 文件失败',
     // 新增：订单处理流程
-    basicInfo: "基本信息",
     extendedInfo: "扩展信息",
     generateCodes: "生成内部编号",
     processingPhase: "处理阶段",
@@ -115,12 +112,10 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     itemQuantity: 'Item Quantity',
     unitOfMeasure: 'Unit of Measure',
     unitPrice: 'Unit Price',
+    totalPrice: 'Total Price',
     // 新增字段翻译
     arkemaSoldToCode: 'Arkema Sold-to Code',
     arkemaShipToCode: 'Arkema Ship-to Code',
-    vendorSalesArea: 'Vendor Sales Area',
-    deliveryByDate: 'Delivery By Date',
-    lineNumber: 'Line Number',
     arkemaProductCode: 'Arkema Product Code',
     // 界面状态翻译
     nextStep: 'Next Step',
@@ -163,7 +158,6 @@ export const translations: Record<'zh' | 'en', TranslationTexts> = {
     selectPDFFile: 'Select PDF File',
     loadError: 'Failed to load PDF file',
     // 新增：订单处理流程
-    basicInfo: "Basic Information",
     extendedInfo: "Extended Information",
     generateCodes: "Generate Internal Codes",
     processingPhase: "Processing Phase",

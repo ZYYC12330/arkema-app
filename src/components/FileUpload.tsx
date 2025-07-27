@@ -7,14 +7,7 @@ import React, { useCallback, useState } from 'react';
 import { Card, CardBody, Button, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../contexts/LanguageContext';
-
-// API 配置
-const API_CONFIG = {
-  baseUrl: '',
-  uploadEndpoint: '/api/upload',
-  publicUploadEndpoint: 'https://demo.langcore.cn/api/file',
-  authToken: 'sk-zzvwbcaxoss3'
-};
+import { API_CONFIG } from '../config/api';
 
 /**
  * FileUpload 组件的属性接口

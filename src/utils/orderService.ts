@@ -4,9 +4,10 @@
  */
 
 import { BasicOrderInfo, ExtendedOrderInfo, CompleteOrderInfo, OrderStatus, OrderProcessingPhase } from '../types';
+import { API_CONFIG } from '../config/api';
 
-const API_BASE_URL = 'https://demo.langcore.cn';
-const API_TOKEN = 'sk-zzvwbcaxoss3';
+const API_BASE_URL = API_CONFIG.publicUploadEndpoint.replace('/api/file', '');
+const API_TOKEN = API_CONFIG.authToken;
 
 // 本地存储键名
 const ORDER_STATUS_KEY = 'arkema_order_status';
@@ -52,7 +53,7 @@ export class OrderService {
     
     const raw = JSON.stringify({
       "input": { 
-        "fileUrl": "https://demo.langcore.cn/api/file/"+fileId ,
+        "fileUrl": `${API_CONFIG.publicUploadEndpoint}/${fileId}`,
         "fileName": fileName
       },
       "runMode": "sync"
@@ -70,7 +71,7 @@ export class OrderService {
       redirect: 'follow' as RequestRedirect
     };
 
-    const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmd5l351c01d8mwb7lesuciq0`, requestOptions);
+    const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmdlyr7yj039vo4c63gi5fpg9`, requestOptions);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -96,6 +97,11 @@ export class OrderService {
         formattedDeliveryDate
       });
       
+      // 计算总价
+      const quantity = parseFloat(apiData.itemQuantity || '0');
+      const unitPrice = parseFloat(apiData.unitPrice || '0');
+      const totalPrice = (quantity * unitPrice).toFixed(2);
+      
       return {
         id: apiData.id || '',
         soldToName: apiData.soldToName || '',
@@ -112,6 +118,7 @@ export class OrderService {
         itemQuantity: apiData.itemQuantity || '',
         unitOfMeasure: apiData.unitOfMeasure || '',
         unitPrice: apiData.unitPrice || '',
+        totalPrice: totalPrice,
       };
     } else {
       console.error('❌ API返回格式错误:', result);
@@ -131,14 +138,11 @@ export class OrderService {
     const mockExtendedInfo: ExtendedOrderInfo = {
       arkemaSoldToCode: this.generateSoldToCode(basicInfo.soldToName),
       arkemaShipToCode: this.generateShipToCode(basicInfo.shipToName),
-      vendorSalesArea: this.generateSalesArea(basicInfo.vendorName),
-      deliveryByDate: this.calculateDeliveryByDate(basicInfo.deliveryDate),
-      lineNumber: "001",
       arkemaProductCode: this.generateProductCode(basicInfo.itemNumber),
     };
 
     // 模拟API调用延迟
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     return mockExtendedInfo;
   }
@@ -153,7 +157,7 @@ export class OrderService {
     console.log('📦 接收到的订单数据:', orderInfo);
     
     try {
-      console.log('📡 请求URL:', `${API_BASE_URL}/api/workflow/run/cmdczxv6f0msbmwb70fatc941`);
+      console.log('📡 请求【写入数据库】工作流URL:', `${API_BASE_URL}/api/workflow/run/cmdlwkhmi037io4c6f4gqkor6`);
       
       const requestBody = {
         ...orderInfo,
@@ -163,7 +167,7 @@ export class OrderService {
       console.log('📤 请求体数据:', requestBody);
       
       // 实际的读取数据库API端点
-      const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmdczxv6f0msbmwb70fatc941`, {
+      const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmdlwkhmi037io4c6f4gqkor6`, {
         method: 'POST',
         headers: {  
           'Authorization': `Bearer ${API_TOKEN}`,
@@ -345,47 +349,14 @@ export class OrderService {
     return `SH${hash.toString().padStart(6, '0')}`;
   }
 
-  /**
-   * 根据供应商名称生成模拟的销售区域
-   * @param vendorName 供应商名称
-   * @returns 模拟的销售区域
-   */
-  private static generateSalesArea(vendorName: string): string {
-    const areas = ['华北', '华东', '华南', '华中', '西南', '西北', '东北'];
-    const hash = this.simpleHash(vendorName);
-    return areas[hash % areas.length];
-  }
+
 
   /**
    * 根据交货日期计算模拟的“此日期前交货”
    * @param deliveryDate 交货日期
    * @returns 计算后的日期字符串
    */
-  private static calculateDeliveryByDate(deliveryDate: string): string {
-    if (!deliveryDate) return '';
-    
-    try {
-      // 如果已经是 YYYY-MM-DD 格式，直接使用
-      if (/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) {
-        const date = new Date(deliveryDate);
-        date.setDate(date.getDate() - 3); // 提前3天
-        return date.toISOString().split('T')[0];
-      }
-      
-      // 如果是ISO格式，先转换
-      const date = new Date(deliveryDate);
-      if (isNaN(date.getTime())) {
-        console.warn('无效的交货日期格式:', deliveryDate);
-        return '';
-      }
-      
-      date.setDate(date.getDate() - 3); // 提前3天
-      return date.toISOString().split('T')[0];
-    } catch (error) {
-      console.error('计算交货日期失败:', error);
-      return '';
-    }
-  }
+
 
   /**
    * 根据物料号生成模拟的产品代码

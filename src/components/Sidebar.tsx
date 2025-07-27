@@ -65,6 +65,8 @@ interface SidebarProps {
   
   /** 是否正在加载基本信息 */
   isLoading?: boolean;
+  /** 加载进度 (0-100) */
+  loadingProgress?: number;
   /** 是否正在生成内部编号 */
   isGeneratingCodes?: boolean;
   /** 是否正在提交订单 */
@@ -98,10 +100,28 @@ const Sidebar: React.FC<SidebarProps> = ({
   onToggleView,
   canToggleView = false,
   isLoading = false,
+  loadingProgress = 0,
   isGeneratingCodes = false,
   isSubmittingOrder = false,
 }) => {
   const { t, language } = useLanguage();
+
+  // 计算总价的函数
+  const calculateTotalPrice = () => {
+    const quantity = parseFloat(basicOrderInfo.itemQuantity || '0');
+    const unitPrice = parseFloat(basicOrderInfo.unitPrice || '0');
+    return (quantity * unitPrice).toFixed(2);
+  };
+
+  // 当数量或单价变化时自动更新总价
+  React.useEffect(() => {
+    if (basicOrderInfo.itemQuantity && basicOrderInfo.unitPrice) {
+      const calculatedTotal = calculateTotalPrice();
+      if (calculatedTotal !== basicOrderInfo.totalPrice) {
+        onBasicOrderUpdate('totalPrice', calculatedTotal);
+      }
+    }
+  }, [basicOrderInfo.itemQuantity, basicOrderInfo.unitPrice]);
 
   
   /**
@@ -431,8 +451,74 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
         
         <div className="flex-1 overflow-y-auto">
+          {/* 加载状态 - 显示加载动画 */}
+          {isLoading && (
+            <div className="flex flex-col items-center justify-center h-full p-8">
+              <div className="text-center">
+                {/* 主加载动画 */}
+                <div className="relative mb-6">
+                  <div className="w-20 h-20 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Icon icon="lucide:file-search" className="text-2xl text-primary" aria-label="文档分析图标" />
+                  </div>
+                </div>
+                
+                {/* 加载文本 */}
+                <h3 className="text-lg font-semibold text-primary mb-2">
+                  {language === 'zh' ? '正在分析文档内容...' : 'Analyzing document content...'}
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  {language === 'zh' ? 'AI正在提取订单信息，请耐心等待' : 'AI is extracting order information, please wait'}
+                </p>
+                
+                {/* 进度条动画 */}
+                <div className="w-full max-w-xs">
+                  <div className="bg-gray-200 rounded-full h-2 mb-2">
+                    <div 
+                      className="bg-primary h-2 rounded-full transition-all duration-200" 
+                      style={{
+                        width: `${loadingProgress}%`
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>
+                      {language === 'zh' ? '处理进度' : 'Progress'}
+                    </span>
+                    <span>{Math.round(loadingProgress)}%</span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {language === 'zh' ? '预计处理时间：15秒' : 'Estimated processing time: 15 seconds'}
+                  </p>
+                </div>
+                
+                {/* 加载步骤指示 */}
+                <div className="mt-8 space-y-3 text-left max-w-sm">
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                    <span className="text-gray-700">
+                      {language === 'zh' ? '正在读取文档内容' : 'Reading document content'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-primary/60 rounded-full animate-pulse" style={{animationDelay: '1s'}}></div>
+                    <span className="text-gray-700">
+                      {language === 'zh' ? '正在识别订单信息' : 'Identifying order information'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm">
+                    <div className="w-2 h-2 bg-primary/40 rounded-full animate-pulse" style={{animationDelay: '2s'}}></div>
+                    <span className="text-gray-700">
+                      {language === 'zh' ? '正在整理结构化数据' : 'Organizing structured data'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* 已提交状态 - 显示所有信息为只读 */}
-          {currentPhase === 'submitted' && (
+          {!isLoading && currentPhase === 'submitted' && (
             <>
               {/* 基本信息 */}
               {renderSection(
@@ -453,6 +539,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus', 'itemQuantity', onBasicOrderUpdate)}
                   {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler', 'unitOfMeasure', onBasicOrderUpdate)}
                   {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign', 'unitPrice', onBasicOrderUpdate)}
+                  {renderDisplayField(basicOrderInfo.totalPrice, t.totalPrice, 'lucide:calculator', 'totalPrice', onBasicOrderUpdate)}
                 </>
               )}
 
@@ -463,9 +550,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <>
                   {renderDisplayField(extendedOrderInfo.arkemaSoldToCode, t.arkemaSoldToCode, 'lucide:code', 'arkemaSoldToCode', onExtendedOrderUpdate)}
                   {renderDisplayField(extendedOrderInfo.arkemaShipToCode, t.arkemaShipToCode, 'lucide:code', 'arkemaShipToCode', onExtendedOrderUpdate)}
-                  {renderDisplayField(extendedOrderInfo.vendorSalesArea, t.vendorSalesArea, 'lucide:globe', 'vendorSalesArea', onExtendedOrderUpdate)}
-                  {renderDisplayField(extendedOrderInfo.deliveryByDate, t.deliveryByDate, 'lucide:clock', 'deliveryByDate', onExtendedOrderUpdate)}
-                  {renderDisplayField(extendedOrderInfo.lineNumber, t.lineNumber, 'lucide:list-ordered', 'lineNumber', onExtendedOrderUpdate)}
                   {renderDisplayField(extendedOrderInfo.arkemaProductCode, t.arkemaProductCode, 'lucide:code', 'arkemaProductCode', onExtendedOrderUpdate)}
                 </>
               )}
@@ -473,7 +557,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           )}
 
           {/* 基本信息阶段 */}
-          {currentPhase === 'basic_info' && (
+          {!isLoading && currentPhase === 'basic_info' && (
             <>
               {renderSection(
                 t.addressInfo,
@@ -507,13 +591,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {renderBasicInputField('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
                   {renderBasicInputField('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
                   {renderBasicInputField('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
+                  {renderBasicInputField('totalPrice', t.totalPrice, 'lucide:calculator', 'number')}
                 </>
               )}
             </>
           )}
 
           {/* 扩展信息阶段 */}
-          {currentPhase === 'extended_info' && (
+          {!isLoading && currentPhase === 'extended_info' && (
             <>
               {/* 显示基本信息（只读） */}
               {renderSection(
@@ -534,6 +619,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus')}
                   {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler')}
                   {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign')}
+                  {renderDisplayField(basicOrderInfo.totalPrice, t.totalPrice, 'lucide:calculator')}
                 </>
               )}
 
@@ -544,9 +630,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <>
                   {renderExtendedInputField('arkemaSoldToCode', t.arkemaSoldToCode, 'lucide:code')}
                   {renderExtendedInputField('arkemaShipToCode', t.arkemaShipToCode, 'lucide:code')}
-                  {renderExtendedInputField('vendorSalesArea', t.vendorSalesArea, 'lucide:globe')}
-                  {renderExtendedInputField('deliveryByDate', t.deliveryByDate, 'lucide:clock', 'date')}
-                  {renderExtendedInputField('lineNumber', t.lineNumber, 'lucide:list-ordered')}
                   {renderExtendedInputField('arkemaProductCode', t.arkemaProductCode, 'lucide:code')}
                 </>
               )}

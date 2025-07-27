@@ -5,14 +5,7 @@
 
 import React from 'react';
 import { UploadQueueItem, UploadQueueState, UploadStatus } from '../types';
-
-// API 配置
-const API_CONFIG = {
-  baseUrl: '',
-  uploadEndpoint: '/api/upload',
-  publicUploadEndpoint: 'https://demo.langcore.cn/api/file',
-  authToken: 'sk-zzvwbcaxoss3'
-};
+import { API_CONFIG } from '../config/api';
 
 /**
  * 上传响应的接口

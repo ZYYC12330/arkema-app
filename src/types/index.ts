@@ -44,15 +44,13 @@ export interface BasicOrderInfo {
   itemQuantity: string;
   unitOfMeasure: string;
   unitPrice: string;
+  totalPrice: string;
 }
 
 // 扩展订单信息（内部编号等）
 export interface ExtendedOrderInfo {
   arkemaSoldToCode: string;
   arkemaShipToCode: string;
-  vendorSalesArea: string;
-  deliveryByDate: string;
-  lineNumber: string;
   arkemaProductCode: string;
 }
 
@@ -120,12 +118,10 @@ export interface TranslationTexts {
   itemQuantity: string;
   unitOfMeasure: string;
   unitPrice: string;
+  totalPrice: string;
   // 新增字段翻译
   arkemaSoldToCode: string;
   arkemaShipToCode: string;
-  vendorSalesArea: string;
-  deliveryByDate: string;
-  lineNumber: string;
   arkemaProductCode: string;
   // 界面状态翻译
   nextStep: string;
@@ -149,6 +145,8 @@ export interface TranslationTexts {
   orderAlreadySubmitted: string;
   submissionSuccess: string;
   submissionFailed: string;
+  returnToPreviousStep: string;
+  aiSuggestion: string;
   pdfPreview: string;
   zoomIn: string;
   zoomOut: string;
