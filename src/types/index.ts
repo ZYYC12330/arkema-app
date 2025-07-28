@@ -18,9 +18,6 @@ export interface OrderInfo {
   // 新增字段
   arkemaSoldToCode: string;
   arkemaShipToCode: string;
-  vendorSalesArea: string;
-  deliveryByDate: string;
-  lineNumber: string;
   arkemaProductCode: string;
 }
 
