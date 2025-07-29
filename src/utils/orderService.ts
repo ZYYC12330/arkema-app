@@ -83,47 +83,124 @@ export class OrderService {
 
     const result = await response.json();
     // console.log('📥 API返回结果:', result);
+    console.log('result', result);
+    
+    // 兼容新的API返回格式
+    let extractedData: any = null;
+    
+    // 字段映射函数：将API返回的数据格式化为统一的字段名
+    const mapApiDataToStandardFormat = (resultData: any): any => {
+      const firstItem = resultData.Items && resultData.Items[0] ? resultData.Items[0] : 
+                       resultData.items && resultData.items[0] ? resultData.items[0] : {};
+      
+      console.log('🔍 映射前的原始数据:', resultData);
+      console.log('🔍 第一个商品数据:', firstItem);
+      
+      // 处理商品数组并映射到标准格式
+      const allItems = (resultData.Items || resultData.items || []).map((item: any) => {
+        return {
+          itemNumber: item['item-number'] || item.itemNumber || '',
+          itemName: item['item-name'] || item.itemName || '',
+          itemQuantity: item['item-quantity'] || item.itemQuantity || item.quantity || '',
+          unitOfMeasure: item['unit-of-measure'] || item.unitOfMeasure || item.unit || '',
+          unitPrice: item['unit-price'] || item.unitPrice || item.price || '',
+        };
+      });
 
-    if (result.output && result.output.result_old) {
-      const apiData = result.output.result_old[0];
-      // console.log('✅ 成功提取订单信息:', apiData);
-
+      const mappedData = {
+        // 基本订单信息
+        soldToName: resultData['sold-to-name'] || resultData.soldToName || '',
+        soldToAddress: resultData['sold-to-address'] || resultData.soldToAddress || '',
+        shipToName: resultData['ship-to-name'] || resultData.shipToName || '',
+        shipToAddress: resultData['ship-to-address'] || resultData.shipToAddress || '',
+        vendorName: resultData['vendor-name'] || resultData.vendorName || '',
+        vendorAddress: resultData['vendor-address'] || resultData.vendorAddress || '',
+        vendorSalesArea: resultData['vendor-sales-area'] || resultData.vendorSalesArea || '',
+        poNumber: resultData['po-number'] || resultData.poNumber || '',
+        poDate: resultData['po-date'] || resultData.poDate || '',
+        deliveryDate: resultData['delivery-date'] || resultData.deliveryDate || '',
+        deliveryByDate: resultData['delivery-by-date'] || resultData.deliveryByDate || '',
+        headerText: resultData['header-text'] || resultData.headerText || '',
+        
+        // 商品信息（取第一个商品作为主要信息，用于向后兼容）
+        itemNumber: firstItem['item-number'] || firstItem.itemNumber || '',
+        itemName: firstItem['item-name'] || firstItem.itemName || '',
+        itemQuantity: firstItem['item-quantity'] || firstItem.itemQuantity || firstItem.quantity || '',
+        unitOfMeasure: firstItem['unit-of-measure'] || firstItem.unitOfMeasure || firstItem.unit || '',
+        unitPrice: firstItem['unit-price'] || firstItem.unitPrice || firstItem.price || '',
+        
+        // 存储所有商品用于多商品显示
+        items: allItems
+      };
+      
+      console.log('🎁 处理后的商品数组:', allItems);
+      
+      console.log('🔍 映射后的数据:', mappedData);
+      return mappedData;
+    };
+    
+    // 检查不同的API返回格式并进行数据映射
+    if (result.status === 'success' && result.output && result.output.result) {
+      // 格式1：{status: 'success', output: {result: {...}}}
+      console.log('📄 使用格式1: result.output.result');
+      extractedData = mapApiDataToStandardFormat(result.output.result);
+    } else if (result.output && result.output.result_old) {
+      // 格式2：result.output.result_old（您当前的情况）
+      console.log('📄 使用格式2: result.output.result_old');
+      extractedData = mapApiDataToStandardFormat(result.output.result_old);
+    } else if (result.output && result.output.result) {
+      // 格式3：result.output.result
+      console.log('📄 使用格式3: result.output.result');
+      extractedData = mapApiDataToStandardFormat(result.output.result);
+    } else if (result.result_old) {
+      // 格式4：result.result_old
+      console.log('📄 使用格式4: result.result_old');
+      extractedData = mapApiDataToStandardFormat(result.result_old);
+    }
+    
+    if (extractedData) {
+      console.log('✅ 成功提取并映射订单信息:', extractedData);
+      
       // 格式化日期字段
-      const formattedPoDate = this.formatDateForDisplay(apiData.poDate);
-      const formattedDeliveryDate = this.formatDateForDisplay(apiData.deliveryDate);
+      const formattedPoDate = this.formatDateForDisplay(extractedData.poDate);
+      const formattedDeliveryDate = this.formatDateForDisplay(extractedData.deliveryDate);
 
-      // console.log('📅 日期格式化结果:', {
-      //   originalPoDate: apiData.poDate,
-      //   formattedPoDate,
-      //   originalDeliveryDate: apiData.deliveryDate,
-      //   formattedDeliveryDate
-      // });
+      console.log('📅 日期格式化结果:', {
+        originalPoDate: extractedData.poDate,
+        formattedPoDate,
+        originalDeliveryDate: extractedData.deliveryDate,
+        formattedDeliveryDate
+      });
 
-      // 计算总价
-      const quantity = parseFloat(apiData.itemQuantity || '0');
-      const unitPrice = parseFloat(apiData.unitPrice || '0');
-      const totalPrice = (quantity * unitPrice).toFixed(2);
 
-      return {
-        id: apiData.id || '',
-        soldToName: apiData.soldToName || '',
-        soldToAddress: apiData.soldToAddress || '',
-        shipToName: apiData.shipToName || '',
-        shipToAddress: apiData.shipToAddress || '',
-        vendorName: apiData.vendorName || '',
-        vendorAddress: apiData.vendorAddress || '',
-        poNumber: apiData.poNumber || '',
+
+      const finalOrderInfo = {
+        id: extractedData.id || '',
+        soldToName: extractedData.soldToName || '',
+        soldToAddress: extractedData.soldToAddress || '',
+        shipToName: extractedData.shipToName || '',
+        shipToAddress: extractedData.shipToAddress || '',
+        vendorName: extractedData.vendorName || '',
+        vendorAddress: extractedData.vendorAddress || '',
+        poNumber: extractedData.poNumber || '',
         poDate: formattedPoDate,
         deliveryDate: formattedDeliveryDate,
-        itemNumber: apiData.itemNumber || '',
-        itemName: apiData.itemName || '',
-        itemQuantity: apiData.itemQuantity || '',
-        unitOfMeasure: apiData.unitOfMeasure || '',
-        unitPrice: apiData.unitPrice || '',
-        totalPrice: totalPrice,
+        itemNumber: extractedData.itemNumber || '',
+        itemName: extractedData.itemName || '',
+        itemQuantity: extractedData.itemQuantity || '',
+        unitOfMeasure: extractedData.unitOfMeasure || '',
+        unitPrice: extractedData.unitPrice || '',
+        // 新增字段
+        items: extractedData.items || [],
+        headerText: extractedData.headerText || '',
+        deliveryByDate: extractedData.deliveryByDate || '',
+        vendorSalesArea: extractedData.vendorSalesArea || '',
       };
+      
+      console.log('🎯 最终返回的订单信息:', finalOrderInfo);
+      return finalOrderInfo;
     } else {
-      console.error('❌ API返回格式错误:', result);
+      console.error('❌ API返回格式错误，无法提取数据:', result);
       throw new Error(result.msg || '从API获取数据失败或格式不正确');
     }
   }
@@ -152,18 +229,19 @@ export class OrderService {
   /**
    * 提交完整订单到数据库
    * @param orderInfo 完整的订单信息
+   * @param fileName 文件名
    * @returns 包含操作结果的 Promise
    */
-  static async submitOrder(orderInfo: CompleteOrderInfo): Promise<{ success: boolean; orderId?: string; message?: string }> {
+  static async submitOrder(orderInfo: CompleteOrderInfo, fileName: string): Promise<{ success: boolean; orderId?: string; message?: string }> {
     // console.log('🔧 OrderService.submitOrder 开始执行...');
     // console.log('📦 接收到的订单数据:', orderInfo);
-
+    console.log('fileName', fileName);
     try {
-      // console.log('📡 请求【写入数据库】工作流URL:', `${LANGCORE_BASE_URL}/api/workflow/run/"cmdczxv6f0msbmwb70fatc941"`);
 
       const requestBody = {
         "input": {
-          "orderData": orderInfo
+          "orderData": orderInfo,
+          "fileName": fileName
         },
         "runMode": "sync"
       };
@@ -182,7 +260,7 @@ export class OrderService {
         body: JSON.stringify(requestBody)
       });
 
-      // console.log('📥 收到API响应:', {
+      // console.log('�� 收到API响应:', {
       //   status: response.status,
       // });
 
@@ -410,7 +488,7 @@ export class OrderService {
       redirect: 'follow' as RequestRedirect
     };
 
-    const response = await fetch(`${LANGCORE_BASE_URL}/api/workflow/run/cmdod6jkx05g8o4c6hjy7vaa6`, requestOptions);
+    const response = await fetch(`${LANGCORE_BASE_URL}/api/workflow/run/cmdo639h005c8o4c6aie6koyj`, requestOptions);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -433,10 +511,7 @@ export class OrderService {
         //   formattedDeliveryDate
         // });
   
-        // 计算总价
-        const quantity = parseFloat(item.itemQuantity || '0');
-        const unitPrice = parseFloat(item.unitPrice || '0');
-        const totalPrice = (quantity * unitPrice).toFixed(2);
+
   
         return {
           id: item.id || '',
@@ -454,7 +529,10 @@ export class OrderService {
           itemQuantity: item.itemQuantity || '',
           unitOfMeasure: item.unitOfMeasure || '',
           unitPrice: item.unitPrice || '',
-          totalPrice: totalPrice,
+          // 扩展字段（从数据库获取或设置默认值）
+          arkemaSoldToCode: item.arkemaSoldToCode || '',
+          arkemaShipToCode: item.arkemaShipToCode || '',
+          arkemaProductCode: item.arkemaProductCode || '',
           phase: item.phase || '',
           isSubmitted: item.isSubmitted || false,
           fileUrl: item.fileUrl || '',

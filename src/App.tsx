@@ -287,7 +287,7 @@ const AppContent: React.FC = () => {
             color="secondary"
             variant="flat"
             onPress={toggleLanguage}
-            className="mr-2 flex items-center gap-1"
+            className="mr-2 flex items-center gap-1 text-white-500"
             aria-label={`切换到${language === 'zh' ? '英文' : '中文'}`}
           >
             <Icon icon="lucide:globe" className="text-sm" aria-label="语言图标" />

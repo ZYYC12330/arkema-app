@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import { Card, CardBody, Input, Button, Divider, Select, SelectItem, Progress, Chip } from "@heroui/react";
 import { Icon } from "@iconify/react";
 import { useLanguage } from '../contexts/LanguageContext';
-import { BasicOrderInfo, ExtendedOrderInfo, CompleteOrderInfo, OrderProcessingPhase, OrderStatus } from '../types';
+import { BasicOrderInfo, ExtendedOrderInfo, CompleteOrderInfo, OrderProcessingPhase, OrderStatus, OrderItem } from '../types';
 import { OrderService } from '../utils/orderService';
 import SuggestionInput from './SuggestionInput'; // 导入 SuggestionInput 组件
 
@@ -106,22 +106,34 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { t, language } = useLanguage();
 
-  // 计算总价的函数
-  const calculateTotalPrice = () => {
-    const quantity = parseFloat(basicOrderInfo.itemQuantity || '0');
-    const unitPrice = parseFloat(basicOrderInfo.unitPrice || '0');
-    return (quantity * unitPrice).toFixed(2);
+
+
+  // 处理多商品数据更新
+  const handleItemUpdate = (itemIndex: number, field: keyof OrderItem, value: string) => {
+    if (!basicOrderInfo.items) return;
+    
+    const updatedItems = [...basicOrderInfo.items];
+    updatedItems[itemIndex] = {
+      ...updatedItems[itemIndex],
+      [field]: value
+    };
+    
+    // 更新基本订单信息中的items数组
+    onBasicOrderUpdate('items' as any, updatedItems as any);
+    
+    // 如果修改的是第一个商品，同时更新单商品字段（保持兼容性）
+    if (itemIndex === 0) {
+      if (field === 'itemNumber') onBasicOrderUpdate('itemNumber', value);
+      if (field === 'itemName') onBasicOrderUpdate('itemName', value);
+      if (field === 'itemQuantity') onBasicOrderUpdate('itemQuantity', value);
+      if (field === 'unitOfMeasure') onBasicOrderUpdate('unitOfMeasure', value);
+      if (field === 'unitPrice') onBasicOrderUpdate('unitPrice', value);
+    }
   };
 
-  // 当数量或单价变化时自动更新总价
-  React.useEffect(() => {
-    if (basicOrderInfo.itemQuantity && basicOrderInfo.unitPrice) {
-      const calculatedTotal = calculateTotalPrice();
-      if (calculatedTotal !== basicOrderInfo.totalPrice) {
-        onBasicOrderUpdate('totalPrice', calculatedTotal);
-      }
-    }
-  }, [basicOrderInfo.itemQuantity, basicOrderInfo.unitPrice]);
+
+
+
 
   
   /**
@@ -137,7 +149,9 @@ const Sidebar: React.FC<SidebarProps> = ({
     icon: string,
     type: string = 'text'
   ) => {
-    const value = isLoading ? '' : basicOrderInfo[field];
+    // 确保value是字符串类型，过滤掉数组和对象字段
+    const fieldValue = basicOrderInfo[field];
+    const value = isLoading ? '' : (typeof fieldValue === 'string' ? fieldValue : '');
     const isEmpty = value === '-' || value === '';
     const isSubmitted = orderStatus?.isSubmitted && orderStatus?.phase === 'submitted';
     
@@ -324,6 +338,133 @@ const Sidebar: React.FC<SidebarProps> = ({
    * 根据当前阶段获取标题和图标
    * @returns 包含标题和图标的对象
    */
+  
+
+  /**
+   * 渲染多商品字段（可编辑）
+   */
+  const renderItemField = (
+    itemIndex: number,
+    field: keyof OrderItem,
+    label: string,
+    icon: string,
+    item: OrderItem,
+    isReadOnly: boolean = false,
+    type: string = 'text'
+  ) => {
+    const value = item[field] || '';
+    const isEmpty = value === '-' || value === '';
+    const isSubmitted = orderStatus?.isSubmitted && orderStatus?.phase === 'submitted';
+
+    if (isReadOnly) {
+      // 只读模式
+      return (
+        <div className="mb-4">
+          <label className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+            <Icon icon={icon} className="flex-shrink-0 text-primary" />
+            <span>{label}</span>
+          </label>
+          <div className="p-2 border rounded-md min-h-[32px] text-sm bg-gray-50 border-gray-200">
+            {value || '-'}
+          </div>
+        </div>
+      );
+    }
+
+    // 可编辑模式
+    return (
+      <div className="mb-4 relative">
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+            <Icon icon={icon} className="flex-shrink-0 text-primary" aria-label={`${label}图标`} />
+            <span>{label}</span>
+          </label>
+        </div>
+        <Input
+          type={type}
+          value={value}
+          onChange={(e) => handleItemUpdate(itemIndex, field, e.target.value)}
+          placeholder={`${t.edit} ${label}`}
+          className={`w-full rounded-lg ${isEmpty ? 'bg-blue-50 rounded-lg' : ''} ${isSubmitted ? 'bg-green-50' : ''}`}
+          size="sm"
+          aria-label={`${label} 输入框`}
+        />
+      </div>
+    );
+  };
+
+  /**
+   * 渲染多商品列表
+   */
+  const renderMultipleItems = (items: OrderItem[], title: string = "商品信息", isReadOnly: boolean = false) => {
+    if (!items || items.length === 0) return null;
+    
+    return (
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2 text-primary">
+          <Icon icon="lucide:package" className="flex-shrink-0 text-lg" />
+          <span>{title}</span>
+          <span className="text-sm bg-primary/10 text-primary px-2 py-1 rounded-full">
+            {items.length} 项商品
+          </span>
+        </h3>
+        
+        <div className="space-y-4">
+          {items.map((item, index) => (
+            <div key={index} className="p-4 border rounded-lg bg-white border-gray-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-medium text-gray-800 flex items-center gap-2">
+                  <Icon icon="lucide:tag" className="text-primary text-sm" />
+                  <span>商品 {index + 1}</span>
+                </h4>
+                {item.itemNumber && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    {item.itemNumber}
+                  </span>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                {/* 商品编号 */}
+                <div>
+                  {renderItemField(index, 'itemNumber', t.itemNumber, 'lucide:barcode', item, isReadOnly)}
+                </div>
+                
+                {/* 商品名称 */}
+                <div>
+                  {renderItemField(index, 'itemName', t.itemName, 'lucide:tag', item, isReadOnly)}
+                </div>
+                
+                {/* 数量 */}
+                <div>
+                  {renderItemField(index, 'itemQuantity', t.itemQuantity, 'lucide:plus', item, isReadOnly, 'number')}
+                </div>
+                
+                {/* 单位 */}
+                <div>
+                  {renderItemField(index, 'unitOfMeasure', t.unitOfMeasure, 'lucide:ruler', item, isReadOnly)}
+                </div>
+                
+                {/* 单价 */}
+                <div>
+                  {renderItemField(index, 'unitPrice', t.unitPrice, 'lucide:dollar-sign', item, isReadOnly, 'number')}
+                </div>
+                
+                
+              </div>
+              
+              
+            </div>
+          ))}
+          
+          
+        </div>
+        
+        <Divider className="mt-4" />
+      </div>
+    );
+  };
+
   const getPhaseInfo = () => {
     switch (currentPhase) {
       case 'basic_info':
@@ -488,7 +629,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <span>{Math.round(loadingProgress)}%</span>
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {language === 'zh' ? '预计处理时间：15秒' : 'Estimated processing time: 15 seconds'}
+                    {language === 'zh' ? '预计处理时间：5-30秒' : 'Estimated processing time: 5-30 seconds'}
                   </p>
                 </div>
                 
@@ -534,13 +675,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {renderDisplayField(basicOrderInfo.poNumber, t.poNumber, 'lucide:hash', 'poNumber', onBasicOrderUpdate)}
                   {renderDisplayField(basicOrderInfo.poDate, t.poDate, 'lucide:calendar', 'poDate', onBasicOrderUpdate)}
                   {renderDisplayField(basicOrderInfo.deliveryDate, t.deliveryDate, 'lucide:clock', 'deliveryDate', onBasicOrderUpdate)}
-                  {renderDisplayField(basicOrderInfo.itemNumber, t.itemNumber, 'lucide:barcode', 'itemNumber', onBasicOrderUpdate)}
-                  {renderDisplayField(basicOrderInfo.itemName, t.itemName, 'lucide:tag', 'itemName', onBasicOrderUpdate)}
-                  {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus', 'itemQuantity', onBasicOrderUpdate)}
-                  {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler', 'unitOfMeasure', onBasicOrderUpdate)}
-                  {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign', 'unitPrice', onBasicOrderUpdate)}
-                  {renderDisplayField(basicOrderInfo.totalPrice, t.totalPrice, 'lucide:calculator', 'totalPrice', onBasicOrderUpdate)}
                 </>
+              )}
+
+              {/* 商品信息 - 根据是否有多个商品决定显示方式 */}
+              {basicOrderInfo.items && basicOrderInfo.items.length > 1 ? (
+                // 多商品显示（submitted阶段，根据编辑模式决定是否可编辑）
+                renderMultipleItems(basicOrderInfo.items, "商品信息", !isEditMode)
+              ) : (
+                // 单商品显示（原有逻辑）
+                renderSection(
+                  "商品信息",
+                  'lucide:package',
+                  <>
+                    {renderDisplayField(basicOrderInfo.itemNumber, t.itemNumber, 'lucide:barcode', 'itemNumber', onBasicOrderUpdate)}
+                    {renderDisplayField(basicOrderInfo.itemName, t.itemName, 'lucide:tag', 'itemName', onBasicOrderUpdate)}
+                    {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus', 'itemQuantity', onBasicOrderUpdate)}
+                    {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler', 'unitOfMeasure', onBasicOrderUpdate)}
+                    {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign', 'unitPrice', onBasicOrderUpdate)}
+                  </>
+                )
               )}
 
               {/* 扩展信息 */}
@@ -582,17 +736,23 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </>
               )}
 
-              {renderSection(
-                t.itemInfo,
-                'lucide:package',
-                <>
-                  {renderBasicInputField('itemNumber', t.itemNumber, 'lucide:barcode')}
-                  {renderBasicInputField('itemName', t.itemName, 'lucide:tag')}
-                  {renderBasicInputField('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
-                  {renderBasicInputField('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
-                  {renderBasicInputField('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
-                  {renderBasicInputField('totalPrice', t.totalPrice, 'lucide:calculator', 'number')}
-                </>
+              {/* 根据是否有多个商品决定显示方式 */}
+              {basicOrderInfo.items && basicOrderInfo.items.length > 1 ? (
+                // 多商品显示（basic_info阶段可编辑）
+                renderMultipleItems(basicOrderInfo.items, t.itemInfo, false)
+              ) : (
+                // 单商品显示（原有逻辑）
+                renderSection(
+                  t.itemInfo,
+                  'lucide:package',
+                  <>
+                    {renderBasicInputField('itemNumber', t.itemNumber, 'lucide:barcode')}
+                    {renderBasicInputField('itemName', t.itemName, 'lucide:tag')}
+                    {renderBasicInputField('itemQuantity', t.itemQuantity, 'lucide:plus', 'number')}
+                    {renderBasicInputField('unitOfMeasure', t.unitOfMeasure, 'lucide:ruler')}
+                    {renderBasicInputField('unitPrice', t.unitPrice, 'lucide:dollar-sign', 'number')}
+                  </>
+                )
               )}
             </>
           )}
@@ -614,13 +774,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {renderDisplayField(basicOrderInfo.poNumber, t.poNumber, 'lucide:hash')}
                   {renderDisplayField(basicOrderInfo.poDate, t.poDate, 'lucide:calendar')}
                   {renderDisplayField(basicOrderInfo.deliveryDate, t.deliveryDate, 'lucide:clock')}
-                  {renderDisplayField(basicOrderInfo.itemNumber, t.itemNumber, 'lucide:barcode')}
-                  {renderDisplayField(basicOrderInfo.itemName, t.itemName, 'lucide:tag')}
-                  {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus')}
-                  {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler')}
-                  {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign')}
-                  {renderDisplayField(basicOrderInfo.totalPrice, t.totalPrice, 'lucide:calculator')}
                 </>
+              )}
+
+              {/* 商品信息 - 根据是否有多个商品决定显示方式 */}
+              {basicOrderInfo.items && basicOrderInfo.items.length > 1 ? (
+                // 多商品显示（extended_info阶段只读）
+                renderMultipleItems(basicOrderInfo.items, "商品信息", true)
+              ) : (
+                // 单商品显示（原有逻辑）
+                renderSection(
+                  "商品信息",
+                  'lucide:package',
+                  <>
+                    {renderDisplayField(basicOrderInfo.itemNumber, t.itemNumber, 'lucide:barcode')}
+                    {renderDisplayField(basicOrderInfo.itemName, t.itemName, 'lucide:tag')}
+                    {renderDisplayField(basicOrderInfo.itemQuantity, t.itemQuantity, 'lucide:plus')}
+                    {renderDisplayField(basicOrderInfo.unitOfMeasure, t.unitOfMeasure, 'lucide:ruler')}
+                    {renderDisplayField(basicOrderInfo.unitPrice, t.unitPrice, 'lucide:dollar-sign')}
+                  </>
+                )
               )}
 
               {/* 扩展信息（可编辑） */}

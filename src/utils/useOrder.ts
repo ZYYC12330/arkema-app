@@ -70,7 +70,11 @@ const initialBasicOrderInfo: BasicOrderInfo = {
     itemQuantity: '',
     unitOfMeasure: '',
     unitPrice: '',
-    totalPrice: '',
+    // 多商品和其他字段
+    items: [],
+    headerText: '',
+    deliveryByDate: '',
+    vendorSalesArea: '',
 };
 
 // 初始扩展订单信息
@@ -120,7 +124,8 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
     if (!fileId) return;
 
     const startTime = Date.now();
-    const MINIMUM_LOADING_TIME = 5000; // 5秒 - 可以调整这个值来设置动画时间
+    const MINIMUM_LOADING_TIME = 2000; // 改为2秒最小加载时间，提供足够的视觉反馈
+    const MAXIMUM_LOADING_TIME = 100000; // 最长100秒超时
 
     setIsLoading(true);
     setLoadingProgress(0);
@@ -133,9 +138,10 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
     // 启动进度更新器
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const progress = Math.min((elapsed / MINIMUM_LOADING_TIME) * 100, 100);
+      // 根据实际情况动态调整进度计算
+      const progress = Math.min((elapsed / MAXIMUM_LOADING_TIME) * 100, 95); // 最多到95%，留5%给最终完成
       setLoadingProgress(progress);
-    }, 30); // 每30ms更新一次动画进度 - 可以调整这个值
+    }, 100); // 每100ms更新一次
 
     try {
       const basicInfo = await OrderService.extractBasicOrderInfo(fileId, fileName);
@@ -156,29 +162,29 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
         setCurrentPhase('submitted');
       }
 
-      // 确保至少加载15秒
+      // 只确保最小加载时间（避免加载过快造成闪烁），而不是强制等待
       const elapsedTime = Date.now() - startTime;
-      const remainingTime = MINIMUM_LOADING_TIME - elapsedTime;
+      const remainingTime = Math.max(0, MINIMUM_LOADING_TIME - elapsedTime);
       
       if (remainingTime > 0) {
         await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
       
-          } catch (err) {
-        // 即使出错也要等够15秒
-        const elapsedTime = Date.now() - startTime;
-        const remainingTime = MINIMUM_LOADING_TIME - elapsedTime;
-        
-        if (remainingTime > 0) {
-          await new Promise(resolve => setTimeout(resolve, remainingTime));
-        }
-        
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        clearInterval(progressInterval);
-        setLoadingProgress(100);
-        setIsLoading(false);
+    } catch (err) {
+      // 出错时也只等待最小时间
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, MINIMUM_LOADING_TIME - elapsedTime);
+      
+      if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
       }
+      
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      clearInterval(progressInterval);
+      setLoadingProgress(100);
+      setIsLoading(false);
+    }
   };
 
   /**
@@ -240,7 +246,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
         fileName: currentFileName
       };
       
-      const result = await OrderService.submitOrder(completeOrderInfo);
+      const result = await OrderService.submitOrder(completeOrderInfo, currentFileName);
       
       if (result.success) {
         setCurrentPhase('submitted');
@@ -305,7 +311,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
    * @param field 要更新的字段
    * @param value 新的值
    */
-  const handleBasicOrderUpdate = (field: keyof BasicOrderInfo, value: string) => {
+  const handleBasicOrderUpdate = (field: keyof BasicOrderInfo, value: string | any) => {
     setBasicOrderInfo(prev => ({ ...prev, [field]: value }));
   };
 

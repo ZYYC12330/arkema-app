@@ -24,6 +24,15 @@ export interface OrderInfo {
 // 订单处理阶段
 export type OrderProcessingPhase = 'basic_info' | 'extended_info' | 'submitted';
 
+// 订单商品项
+export interface OrderItem {
+  itemNumber?: string;
+  itemName?: string;
+  itemQuantity?: string;
+  unitOfMeasure?: string;
+  unitPrice?: string;
+}
+
 // 基本订单信息（第一阶段提取的信息）
 export interface BasicOrderInfo {
   id: string;
@@ -41,7 +50,12 @@ export interface BasicOrderInfo {
   itemQuantity: string;
   unitOfMeasure: string;
   unitPrice: string;
-  totalPrice: string;
+  // 多商品信息
+  items?: OrderItem[];
+  // 其他字段
+  headerText?: string;
+  deliveryByDate?: string;
+  vendorSalesArea?: string;
 }
 
 // 扩展订单信息（内部编号等）
