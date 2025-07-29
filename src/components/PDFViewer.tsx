@@ -63,11 +63,31 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
         return;
       }
 
-      const fileName = typeof file === 'string' ? file : file.name;
-      const fileUrl = typeof file === 'string' ? file : URL.createObjectURL(file);
+      // 修复文件类型检测逻辑
+      let fileName: string;
+      let fileUrl: string;
+      console.log(file)
+      if (typeof file === 'string') {
+        // 如果是URL字符串，尝试从URL中提取文件名
+        fileUrl = file;
+        const urlParts = file.split('/');
+        fileName = urlParts[urlParts.length - 1] || 'unknown.pdf';
+        // 如果URL中没有文件名，尝试从查询参数中获取
+        if (fileName === 'unknown.pdf') {
+          const urlParams = new URLSearchParams(file.split('?')[1] || '');
+          fileName = urlParams.get('filename') || 'unknown.pdf';
+        }
+      } else {
+        // 如果是File对象
+        fileName = file.name;
+        fileUrl = URL.createObjectURL(file);
+      }
+      
+      console.log('🔍 PDFViewer 文件信息:', { fileName, fileUrl, fileType: typeof file });
       
       // 检查是否需要转换
       const fileType = FileConverter.getFileType(fileName);
+      console.log('📄 检测到的文件类型:', fileType);
       
       if (fileType === 'pdf') {
         // 已经是PDF，直接使用
@@ -93,6 +113,7 @@ const PDFViewer: React.FC<PDFViewerProps> = ({
           setIsConverting(false);
         }
       } else {
+        console.error('❌ 不支持的文件类型:', { fileName, fileType });
         setError('不支持的文件类型');
       }
     };

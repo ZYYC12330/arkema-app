@@ -15,7 +15,8 @@ interface UploadResponse {
     fileId?: string;
     url?: string;
   };
-  success?: boolean;
+  status?: string;  // LangCore使用status而不是success
+  success?: boolean; // 兼容旧格式
   msg?: string;
 }
 
@@ -81,48 +82,14 @@ const validateFile = (file: File): { valid: boolean; error?: string } => {
 };
 
 /**
- * 上传文件到本地服务器
+ * 上传文件到LangCore平台
+ * 响应示例: {"status":"success","data":{"fileId":"cmdnyyv6q059ao4c6q0fhsr0y"}}
  */
-const uploadFileToLocalServer = async (file: File): Promise<UploadResponse> => {
-  const formData = new FormData();
-  formData.append('file', file, file.name);
-
-  const uploadUrl = `${API_CONFIG.baseUrl}${API_CONFIG.uploadEndpoint}`;
-
-  const requestOptions = {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${API_CONFIG.authToken}`
-    },
-    body: formData,
-    redirect: 'follow' as RequestRedirect
-  };
-
-  const response = await fetch(uploadUrl, requestOptions);
-  
-  if (!response.ok) {
-    throw new Error(`上传失败: HTTP ${response.status} - ${response.statusText}`);
-  }
-  
-  const result = await response.text();
-  console.log('本地服务器上传响应:', result);
-  
-  try {
-    const responseData: UploadResponse = JSON.parse(result);
-    return responseData;
-  } catch (parseError) {
-    throw new Error('解析响应失败');
-  }
-};
-
-/**
- * 上传文件到公网服务器
- */
-const uploadFileToPublicServer = async (file: File): Promise<string | null> => {
+const uploadFileToLangCore = async (file: File): Promise<UploadResponse> => {
   try {
     const formData = new FormData();
     formData.append("file", file);
-    
+
     const uploadResponse = await fetch(API_CONFIG.publicUploadEndpoint, {
       method: 'POST',
       headers: {
@@ -131,21 +98,22 @@ const uploadFileToPublicServer = async (file: File): Promise<string | null> => {
       body: formData,
       redirect: 'follow'
     });
-  
+
     if (!uploadResponse.ok) {
-      throw new Error(`上传文件到公网失败: ${uploadResponse.statusText}`);
+      throw new Error(`上传文件到LangCore失败: ${uploadResponse.statusText}`);
     }
-    
+
     const uploadResult = await uploadResponse.json();
-    
-    if (uploadResult.success && uploadResult.data && uploadResult.data.url) {
-      return uploadResult.data.url;
-    } else {
-      throw new Error('公网服务器响应格式不正确');
-    }
+      
+      // 检查LangCore响应格式：{"status":"success","data":{"fileId":"..."}}
+      if ((uploadResult.status === 'success' || uploadResult.success) && uploadResult.data && uploadResult.data.fileId) {
+        return uploadResult;
+      } else {
+        throw new Error('LangCore服务器响应格式不正确');
+      }
   } catch (error) {
-    console.error('上传文件到公网失败:', error);
-    return null;
+    console.error('上传文件到LangCore失败:', error);
+    throw error;
   }
 };
 
@@ -240,22 +208,19 @@ export const useUploadQueue = (): UseUploadQueueReturn => {
         }));
       }, 200);
 
-      // 上传到本地服务器
-      const localResponse = await uploadFileToLocalServer(file);
+      // 上传到LangCore平台
+      const langCoreResponse = await uploadFileToLangCore(file);
       
-      if (!localResponse.data?.fileId) {
-        throw new Error(localResponse.msg || '本地服务器上传失败，未返回文件ID');
+      if (!langCoreResponse.data?.fileId) {
+        throw new Error(langCoreResponse.msg || 'LangCore平台上传失败，未返回文件ID');
       }
 
-      // 上传到公网服务器
-      const publicUrl = await uploadFileToPublicServer(file);
-      
       clearInterval(progressInterval);
       
       const fileInfo = {
-        fileId: localResponse.data.fileId,
-        url: localResponse.data.url!,
-        publicUrl: publicUrl || undefined
+        fileId: langCoreResponse.data.fileId,
+        url: langCoreResponse.data.url!,
+        publicUrl: langCoreResponse.data.url
       };
 
       updateQueueItem(id, { 

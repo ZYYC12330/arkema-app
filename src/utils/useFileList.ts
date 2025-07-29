@@ -4,8 +4,7 @@
  */
 
 import React from 'react';
-import { FileInfo } from '../config/files';
-import { getFileList, getFileByName } from '../config/files';
+import { FileInfo, createFileInfo, getFileList } from '../config/files';
 import { OrderService } from './orderService';
 import { API_CONFIG } from '../config/api';
 
@@ -52,33 +51,12 @@ interface UseFileListReturn {
 }
 
 /**
- * 根据文件名推断文件类型
- * @param fileName 文件名
- * @returns 文件类型字符串
- */
-const getFileTypeFromFileName = (fileName: string): FileInfo['type'] => {
-  const extension = (fileName.split('.').pop() || '').toLowerCase();
-  switch (extension) {
-    case 'pdf': return 'pdf';
-    case 'jpg': return 'jpeg';
-    case 'jpeg': return 'jpeg';
-    case 'png': return 'png';
-    case 'xls': return 'xls';
-    case 'xlsx': return 'xlsx';
-    case 'doc': return 'doc';
-    case 'docx': return 'docx';
-    default: return 'pdf';
-  }
-};
-
-
-/**
  * 自定义 Hook，用于管理文件列表和文件处理逻辑
  * @returns 包含文件状态和操作函数的对象
  */
 export const useFileList = (): UseFileListReturn => {
   const [fileList, setFileList] = React.useState<FileInfo[]>([]);
-  const [isLoadingFiles, setIsLoadingFiles] = React.useState(true);
+  const [isLoadingFiles, setIsLoadingFiles] = React.useState(false);
   const [fileListError, setFileListError] = React.useState<string | null>(null);
   const [currentFileIndex, setCurrentFileIndex] = React.useState(-1);
   const [currentFileUrl, setCurrentFileUrl] = React.useState<string | null>(null);
@@ -86,25 +64,21 @@ export const useFileList = (): UseFileListReturn => {
   const [showPDFPreview, setShowPDFPreview] = React.useState(false);
 
   /**
-   * 副作用 Hook，用于在组件挂载时加载文件列表
+   * 初始化时不再加载任何文件，因为现在所有文件都是动态上传的
    */
   React.useEffect(() => {
-    const loadFileList = async () => {
-      try {
-        setIsLoadingFiles(true);
-        setFileListError(null);
-        
-        const files = await getFileList();
-        setFileList(files);
+    // 不再需要加载本地文件列表
+    setIsLoadingFiles(false);
 
-      } catch (error) {
-        setFileListError('获取文件列表失败，请检查网络连接');
-      } finally {
-        setIsLoadingFiles(false);
-      }
-    };
+  }, []);
 
-    loadFileList();
+  // 从数据库中获取文件列表
+  React.useEffect(() => {
+    // 从LangCore获取文件列表
+    // setFileList(files as FileInfo[]);
+    getFileList().then((files: FileInfo[]) => {
+      setFileList(files);
+    });
   }, []);
 
   /**
@@ -112,15 +86,14 @@ export const useFileList = (): UseFileListReturn => {
    * @param file 上传的文件
    * @param fileInfo 包含文件 ID 和 URL 的对象
    */
-  const handleFileUploaded = (file: File, fileInfo: { fileId: string; url:string; publicUrl?: string }) => {
-    const newFileInfo: FileInfo = {
-      id: fileInfo.fileId,
-      name: file.name,
-      url: fileInfo.url,
-      type: getFileTypeFromFileName(file.name),
-      size: file.size,
-      description: `Uploaded at ${new Date().toLocaleTimeString()}`
-    };
+  const handleFileUploaded = (file: File, fileInfo: { fileId: string; url: string; publicUrl?: string }) => {
+    console.log('🔍 handleFileUploaded 接收到的 fileInfo:', fileInfo);
+    
+    const urlToUse = fileInfo.publicUrl || fileInfo.url;
+    console.log('🔗 使用的URL:', urlToUse);
+    
+    const newFileInfo = createFileInfo(file, fileInfo.fileId, urlToUse);
+    console.log('📄 创建的文件信息:', newFileInfo);
 
     setFileList(prevList => {
       const existingFileIndex = prevList.findIndex(f => f.name === newFileInfo.name);
@@ -150,7 +123,7 @@ export const useFileList = (): UseFileListReturn => {
   };
 
   /**
-   * 处理文件选择
+   * 处理文件选择 - 现在所有文件都必须是已上传到LangCore的文件
    * @param fileName 选择的文件名
    * @param callbacks 包含不同场景回调函数的对象
    */
@@ -160,14 +133,21 @@ export const useFileList = (): UseFileListReturn => {
     onReset: () => void;
   }) => {
     try {
+      console.log('🔍 开始选择文件:', fileName);
       const savedStatus = OrderService.getOrderStatus(fileName);
-      const fileInfo = await getFileByName(fileName);
       
-      if (fileInfo) {
+      // 查找已上传的文件
+      const fileInfo = fileList.find(file => file.name === fileName);
+      console.log('📄 找到的文件信息:', fileInfo);
+      
+      if (fileInfo && fileInfo.url) {
         const index = fileList.findIndex(file => file.name === fileName);
         if (index !== -1) {
           setCurrentFileIndex(index);
-          setCurrentFileUrl(fileInfo.url);
+          // 修改：传递包含文件名的URL，以便PDFViewer能够正确识别文件类型
+          const urlWithFilename = `${fileInfo.url}?filename=${encodeURIComponent(fileName)}`;
+          console.log('🔗 设置的URL:', urlWithFilename);
+          setCurrentFileUrl(urlWithFilename);
           setUploadedFile(null);
           setShowPDFPreview(true);
           
@@ -175,38 +155,40 @@ export const useFileList = (): UseFileListReturn => {
             callbacks.onLoadSaved('submitted', savedStatus);
           } else if (savedStatus?.phase === 'extended_info') {
             callbacks.onLoadSaved('extended_info', savedStatus);
-
           } else {
             callbacks.onReset();
-            const response = await fetch(fileInfo.url);
-            if (!response.ok) throw new Error(`获取本地文件失败: ${response.statusText}`);
-            
-            const fileBlob = await response.blob();
-            const formData = new FormData();
-            formData.append('file', fileBlob, fileName);
-            
-            const uploadResponse = await fetch(API_CONFIG.publicUploadEndpoint, {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${API_CONFIG.authToken}` },
-              body: formData,
-            });
-            
-            if (!uploadResponse.ok) throw new Error(`上传文件失败: ${uploadResponse.statusText}`);
-            
-            const uploadResult = await uploadResponse.json();
-            if (uploadResult.data && uploadResult.data.fileId) {
-              callbacks.onSuccess(uploadResult.data.fileId, fileName, false);
+            // 直接使用LangCore上的文件URL，提取文件ID
+            const fileId = extractFileIdFromUrl(fileInfo.url);
+            if (fileId) {
+              callbacks.onSuccess(fileId, fileName, false);
             } else {
-              throw new Error('上传响应格式不正确');
+              throw new Error('无法从文件URL中提取文件ID');
             }
           }
         }
+      } else {
+        throw new Error(`文件 "${fileName}" 未找到或未上传，请先上传该文件`);
       }
     } catch (error) {
+      console.error('❌ 文件选择错误:', error);
       setFileListError(error instanceof Error ? error.message : '选择文件时出错');
     }
   };
 
+  /**
+   * 从LangCore文件URL中提取文件ID
+   * @param url LangCore文件URL
+   * @returns 文件ID或null
+   */
+  const extractFileIdFromUrl = (url: string): string | null => {
+    try {
+      // LangCore URL格式通常是: https://demo.langcore.cn/api/file/{fileId}
+      const match = url.match(/\/api\/file\/([^\/\?]+)/);
+      return match ? match[1] : null;
+    } catch {
+      return null;
+    }
+  };
 
   return {
     fileList,

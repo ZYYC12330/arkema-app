@@ -125,9 +125,9 @@ const createPluginLogic = (babel: {types: typeof BabelTypes}, options: CustomPlu
 
           // If we're in a Three.js context, skip data-locator injection entirely
           if (isCurrentlyInThreeJsContext()) {
-            console.log(
-              `[inject-data-locator-original-source] Skipping data-locator injection for ${elementName} (inside Three.js context, ${threeJsComponents.size} components loaded)`,
-            );
+            // console.log(
+            //   `[inject-data-locator-original-source] Skipping data-locator injection for ${elementName} (inside Three.js context, ${threeJsComponents.size} components loaded)`,
+            // );
             return;
           }
 
@@ -191,9 +191,9 @@ const createPluginLogic = (babel: {types: typeof BabelTypes}, options: CustomPlu
 
             openingElement.attributes.push(dataLocatorAttr);
 
-            console.log(
-              `[inject-data-locator-original-source] Added data-locator (${mapped ? "original" : "generated"}): ${locatorValue} to ${elementName} in ${filename}${mapped ? ` (gen L${start.line}:C${start.column})` : `(L${start.line}:C${start.column})`}`,
-            );
+            // console.log(
+            //   `[inject-data-locator-original-source] Added data-locator (${mapped ? "original" : "generated"}): ${locatorValue} to ${elementName} in ${filename}${mapped ? ` (gen L${start.line}:C${start.column})` : `(L${start.line}:C${start.column})`}`,
+            // );
           }
         },
         exit() {

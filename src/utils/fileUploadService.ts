@@ -1,84 +1,83 @@
 // 文件上传服务
-// 统一管理文件上传到公网服务器的逻辑
+// 统一管理文件上传到LangCore平台的逻辑
 
 import { API_CONFIG } from '../config/api';
-
-const API_BASE_URL = API_CONFIG.publicUploadEndpoint.replace('/api/file', '');
-const API_TOKEN = API_CONFIG.authToken;
 
 export interface UploadResponse {
   data?: {
     fileId?: string;
     url?: string;
   };
-  success?: boolean;
+  status?: string;  // LangCore使用status而不是success
+  success?: boolean; // 兼容旧格式
   msg?: string;
 }
 
 export class FileUploadService {
   /**
-   * 上传文件到公网服务器
+   * 上传文件到LangCore平台
    * @param file 要上传的文件
    * @returns 上传结果，包含fileId和url
    */
-  static async uploadFileToPublicServer(file: File): Promise<{ fileId: string; url: string } | null> {
+  static async uploadFileToLangCore(file: File): Promise<{ fileId: string; url: string } | null> {
     try {
-      console.log('🌐 开始上传文件到公网服务器:', file.name);
+      // console.log('🌐 开始上传文件到LangCore平台:', file.name);
       
       const formData = new FormData();
       formData.append("file", file, file.name);
       
-      const uploadResponse = await fetch(`${API_BASE_URL}/api/file`, {
+      const uploadResponse = await fetch(API_CONFIG.publicUploadEndpoint, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${API_TOKEN}`
+          'Authorization': `Bearer ${API_CONFIG.authToken}`
         },
         body: formData,
         redirect: 'follow'
       });
     
       if (!uploadResponse.ok) {
-        throw new Error(`上传文件到公网失败: ${uploadResponse.status} - ${uploadResponse.statusText}`);
+        throw new Error(`上传文件到LangCore失败: ${uploadResponse.status} - ${uploadResponse.statusText}`);
       }
       
       const uploadResult = await uploadResponse.json();
-      console.log('📥 公网服务器响应:', uploadResult);
+      // console.log('📥 LangCore平台响应:', uploadResult);
       
-      if (uploadResult.success && uploadResult.data && uploadResult.data.fileId) {
-        console.log('✅ 文件上传到公网成功:', {
-          fileId: uploadResult.data.fileId,
-          url: uploadResult.data.url
-        });
+      // 检查LangCore响应格式：{"status":"success","data":{"fileId":"..."}}
+      if ((uploadResult.status === 'success' || uploadResult.success) && uploadResult.data && uploadResult.data.fileId) {
+        // console.log('✅ 文件上传到LangCore成功:', {
+        //   fileId: uploadResult.data.fileId,
+        //   url: uploadResult.data.url
+        // });
         return {
           fileId: uploadResult.data.fileId,
           url: uploadResult.data.url
         };
       } else {
-        throw new Error('公网服务器响应格式不正确');
+        throw new Error('LangCore平台响应格式不正确');
       }
     } catch (error) {
-      console.error('❌ 上传文件到公网失败:', error);
+      console.error('❌ 上传文件到LangCore失败:', error);
       return null;
     }
   }
 
   /**
-   * 上传文件到公网服务器（返回URL字符串）
+   * 上传文件到LangCore平台（返回URL字符串）
    * @param file 要上传的文件
    * @returns 文件URL或null
    */
-  static async uploadFileToPublicServerForUrl(file: File): Promise<string | null> {
-    const result = await this.uploadFileToPublicServer(file);
+  static async uploadFileToLangCoreForUrl(file: File): Promise<string | null> {
+    const result = await this.uploadFileToLangCore(file);
     return result?.url || null;
   }
 
   /**
-   * 上传文件到公网服务器（返回fileId）
+   * 上传文件到LangCore平台（返回fileId）
    * @param file 要上传的文件
    * @returns 文件ID或null
    */
-  static async uploadFileToPublicServerForFileId(file: File): Promise<string | null> {
-    const result = await this.uploadFileToPublicServer(file);
+  static async uploadFileToLangCoreForFileId(file: File): Promise<string | null> {
+    const result = await this.uploadFileToLangCore(file);
     return result?.fileId || null;
   }
 

@@ -5,9 +5,10 @@
 
 import { BasicOrderInfo, ExtendedOrderInfo, CompleteOrderInfo, OrderStatus, OrderProcessingPhase } from '../types';
 import { API_CONFIG } from '../config/api';
+import { FileInfo } from '../config/files';
 
-const API_BASE_URL = API_CONFIG.publicUploadEndpoint.replace('/api/file', '');
-const API_TOKEN = API_CONFIG.authToken;
+// LangCore平台基础URL
+const LANGCORE_BASE_URL = API_CONFIG.publicUploadEndpoint.replace('/api/file', '');
 
 // 本地存储键名
 const ORDER_STATUS_KEY = 'arkema_order_status';
@@ -27,7 +28,7 @@ export class OrderService {
    */
   private static formatDateForDisplay(isoDate: string): string {
     if (!isoDate) return '';
-    
+
     try {
       const date = new Date(isoDate);
       if (isNaN(date.getTime())) {
@@ -43,35 +44,36 @@ export class OrderService {
 
   /**
    * 从 PDF 文件提取基本订单信息
-   * @param fileId 从公网服务器获取的文件 ID
+   * @param fileId 从LangCore平台获取的文件 ID
    * @param fileName 文件名
    * @returns 包含基本订单信息的 Promise
    * @throws 如果 API 请求失败或返回格式不正确，则抛出错误
    */
   static async extractBasicOrderInfo(fileId: string, fileName: string): Promise<BasicOrderInfo> {
-    console.log('🔍 开始提取订单信息:', { fileId, fileName });
-    
+    // console.log('🔍 开始提取订单信息:', { fileId, fileName });
+    // 去數據庫找file，如果找得到，直接返回
+
     const raw = JSON.stringify({
-      "input": { 
+      "input": {
         "fileUrl": `${API_CONFIG.publicUploadEndpoint}/${fileId}`,
         "fileName": fileName
       },
       "runMode": "sync"
     });
 
-    console.log('📤 发送给[要素提取]工作流的API数据:', raw);
+    // console.log('📤 发送给[要素提取]工作流的API数据:', raw);
 
     const requestOptions = {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${API_TOKEN}`,
+        'Authorization': `Bearer ${API_CONFIG.authToken}`,
         'Content-Type': 'application/json'
       },
       body: raw,
       redirect: 'follow' as RequestRedirect
     };
 
-    const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmdlyr7yj039vo4c63gi5fpg9`, requestOptions);
+    const response = await fetch(`${LANGCORE_BASE_URL}/api/workflow/run/cmd5l351c01d8mwb7lesuciq0`, requestOptions);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -80,28 +82,28 @@ export class OrderService {
     }
 
     const result = await response.json();
-    console.log('📥 API返回结果:', result);
-    
+    // console.log('📥 API返回结果:', result);
+
     if (result.output && result.output.result_old) {
       const apiData = result.output.result_old[0];
-      console.log('✅ 成功提取订单信息:', apiData);
-      
+      // console.log('✅ 成功提取订单信息:', apiData);
+
       // 格式化日期字段
       const formattedPoDate = this.formatDateForDisplay(apiData.poDate);
       const formattedDeliveryDate = this.formatDateForDisplay(apiData.deliveryDate);
-      
-      console.log('📅 日期格式化结果:', {
-        originalPoDate: apiData.poDate,
-        formattedPoDate,
-        originalDeliveryDate: apiData.deliveryDate,
-        formattedDeliveryDate
-      });
-      
+
+      // console.log('📅 日期格式化结果:', {
+      //   originalPoDate: apiData.poDate,
+      //   formattedPoDate,
+      //   originalDeliveryDate: apiData.deliveryDate,
+      //   formattedDeliveryDate
+      // });
+
       // 计算总价
       const quantity = parseFloat(apiData.itemQuantity || '0');
       const unitPrice = parseFloat(apiData.unitPrice || '0');
       const totalPrice = (quantity * unitPrice).toFixed(2);
-      
+
       return {
         id: apiData.id || '',
         soldToName: apiData.soldToName || '',
@@ -143,7 +145,7 @@ export class OrderService {
 
     // 模拟API调用延迟
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     return mockExtendedInfo;
   }
 
@@ -153,32 +155,36 @@ export class OrderService {
    * @returns 包含操作结果的 Promise
    */
   static async submitOrder(orderInfo: CompleteOrderInfo): Promise<{ success: boolean; orderId?: string; message?: string }> {
-    console.log('🔧 OrderService.submitOrder 开始执行...');
-    console.log('📦 接收到的订单数据:', orderInfo);
-    
+    // console.log('🔧 OrderService.submitOrder 开始执行...');
+    // console.log('📦 接收到的订单数据:', orderInfo);
+
     try {
-      console.log('📡 请求【写入数据库】工作流URL:', `${API_BASE_URL}/api/workflow/run/cmdlwkhmi037io4c6f4gqkor6`);
-      
+      // console.log('📡 请求【写入数据库】工作流URL:', `${LANGCORE_BASE_URL}/api/workflow/run/"cmdczxv6f0msbmwb70fatc941"`);
+
       const requestBody = {
-        ...orderInfo,
-        // submittedAt: new Date().toISOString()
+        "input": {
+          "orderData": orderInfo
+        },
+        "runMode": "sync"
       };
-      
-      console.log('📤 请求体数据:', requestBody);
-      
-      // 实际的读取数据库API端点
-      const response = await fetch(`${API_BASE_URL}/api/workflow/run/cmdlwkhmi037io4c6f4gqkor6`, {
+
+      console.log('📤 发送的请求体:', JSON.stringify(requestBody, null, 2));
+
+      // console.log('📤 请求体数据:', requestBody);
+
+      // 实际的写入数据库API端点
+      const response = await fetch(`${LANGCORE_BASE_URL}/api/workflow/run/cmdczxv6f0msbmwb70fatc941`, {
         method: 'POST',
-        headers: {  
-          'Authorization': `Bearer ${API_TOKEN}`,
+        headers: {
+          'Authorization': `Bearer ${API_CONFIG.authToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(requestBody)
       });
 
-      console.log('📥 收到API响应:', {
-        status: response.status,
-      });
+      // console.log('📥 收到API响应:', {
+      //   status: response.status,
+      // });
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -190,13 +196,13 @@ export class OrderService {
         throw new Error(`提交失败: ${response.status} - ${errorText}`);
       }
 
-      console.log('✅ API写入数据库成功');
+      // console.log('✅ API写入数据库成功');
 
-      
+
       // 更新本地状态
-      console.log('💾 更新本地订单状态...');
+      // console.log('💾 更新本地订单状态...');
       this.updateOrderStatus(orderInfo.fileUrl || '', 'submitted', true);
-      
+
       return {
         success: true,
         message: '订单提交成功'
@@ -239,8 +245,8 @@ export class OrderService {
    * @param isSubmitted 是否已提交
    */
   static updateOrderStatus(
-    fileName: string, 
-    phase: OrderProcessingPhase, 
+    fileName: string,
+    phase: OrderProcessingPhase,
     isSubmitted: boolean = false
   ): void {
     const statusData = localStorage.getItem(ORDER_STATUS_KEY);
@@ -282,8 +288,8 @@ export class OrderService {
    * @param extendedInfo 扩展订单信息
    */
   static saveOrderInfo(
-    fileName: string, 
-    basicInfo: BasicOrderInfo, 
+    fileName: string,
+    basicInfo: BasicOrderInfo,
     extendedInfo: ExtendedOrderInfo
   ): void {
     const orderInfoData = localStorage.getItem(ORDER_INFO_KEY);
@@ -352,7 +358,7 @@ export class OrderService {
 
 
   /**
-   * 根据交货日期计算模拟的“此日期前交货”
+   * 根据交货日期计算模拟的"此日期前交货"
    * @param deliveryDate 交货日期
    * @returns 计算后的日期字符串
    */
@@ -381,5 +387,85 @@ export class OrderService {
       hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash) % 1000000;
+  }
+
+  /**
+   * 获取文件列表
+   * @returns 包含操作结果的 Promise
+   */
+  static async getFileList(): Promise<Array<CompleteOrderInfo>> {
+
+    const raw = JSON.stringify({
+      "input": {},
+      "runMode": "sync"
+    });
+
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_CONFIG.authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: raw,
+      redirect: 'follow' as RequestRedirect
+    };
+
+    const response = await fetch(`${LANGCORE_BASE_URL}/api/workflow/run/cmdod6jkx05g8o4c6hjy7vaa6`, requestOptions);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ API请求失败:', { status: response.status, error: errorText });
+      throw new Error(`API请求失败: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('result', result);
+    if (result.output && result.output.result) {
+       result.output.result.forEach((item: CompleteOrderInfo) => {
+        // 格式化日期字段
+        const formattedPoDate = this.formatDateForDisplay(item.poDate);
+        const formattedDeliveryDate = this.formatDateForDisplay(item.deliveryDate);
+  
+        // console.log('📅 日期格式化结果:', {
+        //   originalPoDate: apiData.poDate,
+        //   formattedPoDate,
+        //   originalDeliveryDate: apiData.deliveryDate,
+        //   formattedDeliveryDate
+        // });
+  
+        // 计算总价
+        const quantity = parseFloat(item.itemQuantity || '0');
+        const unitPrice = parseFloat(item.unitPrice || '0');
+        const totalPrice = (quantity * unitPrice).toFixed(2);
+  
+        return {
+          id: item.id || '',
+          soldToName: item.soldToName || '',
+          soldToAddress: item.soldToAddress || '',
+          shipToName: item.shipToName || '',
+          shipToAddress: item.shipToAddress || '',
+          vendorName: item.vendorName || '',
+          vendorAddress: item.vendorAddress || '',
+          poNumber: item.poNumber || '',
+          poDate: formattedPoDate,
+          deliveryDate: formattedDeliveryDate,
+          itemNumber: item.itemNumber || '',
+          itemName: item.itemName || '',
+          itemQuantity: item.itemQuantity || '',
+          unitOfMeasure: item.unitOfMeasure || '',
+          unitPrice: item.unitPrice || '',
+          totalPrice: totalPrice,
+          phase: item.phase || '',
+          isSubmitted: item.isSubmitted || false,
+          fileUrl: item.fileUrl || '',
+          fileName: item.fileName || '',
+        } as CompleteOrderInfo;
+      });
+      return result.output.result;
+
+    } else {
+      console.error('❌ API返回格式错误:', result);
+      throw new Error(result.msg || '从API获取数据失败或格式不正确');
+    }
   }
 } 

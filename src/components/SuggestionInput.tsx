@@ -66,10 +66,10 @@ const SuggestionInput: React.FC<SuggestionInputProps> = ({
       isReadOnly={isReadOnly || isLoading}
       onInputChange={onChange}
       onSelectionChange={(key) => {
-        console.log('Selection changed:', key); // 调试信息
+        // console.log('Selection changed:', key); // 调试信息
         if (key) {
           const selectedValue = String(key);
-          console.log('Selected value:', selectedValue); // 调试信息
+          // console.log('Selected value:', selectedValue); // 调试信息
           // 直接设置输入值
           onChange(selectedValue);
           // 强制更新 inputValue

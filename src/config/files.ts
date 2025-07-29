@@ -1,3 +1,6 @@
+import { BasicOrderInfo, CompleteOrderInfo } from "../types";
+import { OrderService } from "../utils/orderService";
+
 // 文件配置
 export interface FileInfo {
   id: string;
@@ -20,41 +23,46 @@ const FILE_TYPE_MAP: Record<string, FileInfo['type']> = {
   'png': 'png'
 };
 
+// 预定义的样例文件列表（这些文件需要手动上传到LangCore平台）
+
 /**
- * 动态获取文件列表
- * 从 public/documents 目录扫描文件
+ * 获取文件列表 - 现在返回空数组，因为我们将使用动态上传的文件
+ * 不再依赖本地文件服务
  */
 export const getFileList = async (): Promise<FileInfo[]> => {
   try {
-    // 获取 documents 目录下的文件列表
-    const response = await fetch('/api/files');
-    
-    if (!response.ok) {
-      throw new Error(`获取文件列表失败: ${response.statusText}`);
-    }
-    
-    const files = await response.json();
-    
-    // 过滤支持的文件类型并转换为 FileInfo 格式
-    return files
-      .filter((file: any) => {
-        const extension = file.name.toLowerCase().split('.').pop();
-        return FILE_TYPE_MAP[extension];
-      })
-      .map((file: any, index: number) => {
-        const extension = file.name.toLowerCase().split('.').pop();
-        return {
-          id: String(index + 1),
-          name: file.name,
-          url: `/documents/${file.name}`,
-          type: FILE_TYPE_MAP[extension],
-          size: file.size,
-          description: getFileDescription(file.name)
-        };
-      });
+    // 返回预定义的文件信息，但这些文件需要通过上传才能使用
+    // 实际的文件URL将在上传后动态获取
+    const fileList = await OrderService.getFileList();
+    console.log('fileList', fileList);
+    return fileList.map((item: CompleteOrderInfo) => {
+      return {
+        id: String(item.id),
+        name: item.fileName,
+        type: 'pdf',
+        url: item.fileUrl,
+        description: getFileDescription(item.fileName || ''),
+        size: 0,
+      } as FileInfo;
+    });
+    // return files
+    //   .filter((fileName) => {
+    //     const extension = fileName.toLowerCase().split('.').pop();
+    //     return FILE_TYPE_MAP[extension as string];
+    //   })
+    //   .map((fileName, index) => {
+    //     const extension = fileName.toLowerCase().split('.').pop() as string;
+    //     return {
+    //       id: String(index + 1),
+    //       name: fileName,
+    //       type: FILE_TYPE_MAP[extension],
+    //       description: getFileDescription(fileName),
+    //       url: '', // 将在文件上传后填充实际的LangCore URL
+    //       size: 0, // 将在文件上传后填充实际大小
+    //     };
+    //   });
   } catch (error) {
-    console.error('动态获取文件列表失败:', error);
-    // 如果动态获取失败，返回空数组
+    console.error('获取文件列表失败:', error);
     return [];
   }
 };
@@ -98,4 +106,24 @@ export const getFileById = async (id: string): Promise<FileInfo | undefined> => 
 export const getFileByName = async (name: string): Promise<FileInfo | undefined> => {
   const files = await getFileList();
   return files.find(file => file.name === name);
+};
+
+/**
+ * 创建新的文件信息对象（用于动态上传的文件）
+ */
+export const createFileInfo = (
+  file: File, 
+  fileId: string, 
+  url: string
+): FileInfo => {
+  const extension = file.name.toLowerCase().split('.').pop() as string;
+  
+  return {
+    id: fileId,
+    name: file.name,
+    url: url,
+    type: FILE_TYPE_MAP[extension] || 'pdf',
+    size: file.size,
+    description: getFileDescription(file.name)
+  };
 };

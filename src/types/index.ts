@@ -56,6 +56,7 @@ export interface CompleteOrderInfo extends BasicOrderInfo, ExtendedOrderInfo {
   phase: OrderProcessingPhase;
   isSubmitted: boolean;
   fileUrl?: string;
+  fileName?: string;
 }
 
 // 订单状态

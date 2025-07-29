@@ -131,22 +131,25 @@ const AppContent: React.FC = () => {
     // 更新文件列表和相关状态
     originalHandleFileUploaded(file, fileInfo);
     
-    // 只有在单文件模式或者当前没有选中文件时才自动处理
-    if (uploadMode === 'single' || currentFileIndex === -1) {
-      // 重置订单状态，确保新文件从基本信息阶段开始
-      resetOrderInfo();
-      
-      // 开始提取新文件的基本信息
-      if (fileInfo.publicUrl) {
-        fetchBasicOrderInfo(fileInfo.publicUrl, file.name, false);
+    // 使用 setTimeout 确保状态更新完成后再执行后续逻辑
+    setTimeout(() => {
+      // 只有在单文件模式时才自动处理
+      if (uploadMode === 'single') {
+        // 重置订单状态，确保新文件从基本信息阶段开始
+        resetOrderInfo();
+        
+        // 开始提取新文件的基本信息
+        if (fileInfo.fileId) {
+          fetchBasicOrderInfo(fileInfo.fileId, file.name, false);
+        }
       }
-    }
-    
-    // 在多文件模式下，显示提示信息
-    if (uploadMode === 'multi' && currentFileIndex !== -1) {
-      // 可以在这里添加Toast通知或其他用户友好的提示
-      console.log(`${t.fileUploaded}: ${file.name}`);
-    }
+      
+      // 在多文件模式下，显示提示信息
+      if (uploadMode === 'multi') {
+        // 可以在这里添加Toast通知或其他用户友好的提示
+        console.log(`${t.fileUploaded}: ${file.name}`);
+      }
+    }, 0); // 使用 setTimeout 0 确保状态更新在下一个事件循环中完成
   };
 
   /**
@@ -321,7 +324,7 @@ const AppContent: React.FC = () => {
 
         {/* 主视图 */}
         <div className="flex-1 min-h-0">
-          {fileList.length === 0 || !currentFileUrl || !showPDFPreview ? (
+          {!showPDFPreview || fileList.length === 0 ? (
             uploadMode === 'multi' ? (
               <MultiFileUpload 
                 onFileUploaded={handleFileUploaded} 

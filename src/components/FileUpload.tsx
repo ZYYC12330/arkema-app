@@ -1,27 +1,14 @@
 /**
  * @file FileUpload.tsx
- * @description 文件上传组件，支持拖放和点击选择文件，并显示上传进度。
+ * @description 文件上传组件，支持拖放和点击上传，仅使用LangCore平台
  */
 
 import React, { useCallback, useState } from 'react';
 import { Card, CardBody, Button, Progress } from "@heroui/react";
 import { Icon } from "@iconify/react";
+import { FileUploadService } from '../utils/fileUploadService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { API_CONFIG } from '../config/api';
-
-/**
- * FileUpload 组件的属性接口
- */
-interface FileUploadProps {
-  /** 文件上传成功的回调 */
-  onFileUploaded: (file: File, fileInfo: { fileId: string; url: string; publicUrl: string }) => void;
-  /** 文件上传失败的回调 */
-  onError?: (error: string) => void;
-  /** 多文件选择的回调 */
-  onFilesSelected?: (files: File[]) => void;
-  /** 是否支持多文件模式 */
-  multipleMode?: boolean;
-}
 
 /**
  * 上传响应的接口
@@ -31,64 +18,42 @@ interface UploadResponse {
     fileId?: string;
     url?: string;
   };
-  success?: boolean;
+  status?: string;  // LangCore使用status而不是success
+  success?: boolean; // 兼容旧格式
   msg?: string;
 }
 
 /**
- * 文件上传组件
+ * FileUpload 组件的 Props 接口
+ */
+interface FileUploadProps {
+  /** 文件上传成功的回调函数 */
+  onFileUploaded: (file: File, fileInfo: { fileId: string; url: string; publicUrl?: string }) => void;
+  /** 文件上传失败的回调函数 */
+  onError: (error: string) => void;
+  /** 是否支持多文件模式（默认为 false） */
+  multipleMode?: boolean;
+  /** 多文件模式下选择文件的回调 */
+  onFilesSelected?: (files: File[]) => void;
+}
+
+/**
+ * FileUpload 组件
  * 
- * @description 提供一个用户友好的界面，用于上传文件。
- * 支持拖放、点击选择、文件类型/大小验证和上传进度显示。
- * 支持单文件和多文件上传模式。
+ * @description 提供文件上传功能的组件，支持拖放和点击上传。
+ * 使用 LangCore 平台处理文件上传。
  */
 const FileUpload: React.FC<FileUploadProps> = ({ 
   onFileUploaded, 
   onError, 
-  onFilesSelected, 
-  multipleMode = false 
+  multipleMode = false, 
+  onFilesSelected 
 }) => {
   const { t } = useLanguage();
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  /**
-   * 处理文件拖拽悬停事件
-   */
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  }, []);
-
-  /**
-   * 处理文件拖拽离开事件
-   */
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  }, []);
-
-  /**
-   * 处理文件放下事件
-   */
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      if (multipleMode && onFilesSelected) {
-        onFilesSelected(files);
-      } else {
-        handleFileUpload(files[0]);
-      }
-    }
-  }, [multipleMode, onFilesSelected]);
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
 
   /**
    * 处理文件选择事件
@@ -108,52 +73,11 @@ const FileUpload: React.FC<FileUploadProps> = ({
   }, [multipleMode, onFilesSelected]);
 
   /**
-   * 上传文件到本地服务器
+   * 上传文件到LangCore平台
    * @param file 要上传的文件
    * @returns 解析后的上传响应
    */
-  const uploadFileToLocalServer = async (file: File): Promise<UploadResponse> => {
-    const formData = new FormData();
-    formData.append('file', file, file.name);
-
-    const uploadUrl = `${API_CONFIG.baseUrl}${API_CONFIG.uploadEndpoint}`;
-
-    const requestOptions = {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${API_CONFIG.authToken}`
-      },
-      body: formData,
-      redirect: 'follow' as RequestRedirect
-    };
-
-    try {
-      const response = await fetch(uploadUrl, requestOptions);
-      
-      if (!response.ok) {
-        throw new Error(`上传失败: HTTP ${response.status} - ${response.statusText}`);
-      }
-      
-      const result = await response.text();
-      
-      try {
-        const responseData: UploadResponse = JSON.parse(result);
-        return responseData;
-      } catch (parseError) {
-        throw new Error('解析响应失败');
-      }
-    } catch (error) {
-      console.error('本地服务器上传错误:', error);
-      throw error;
-    }
-  };
-
-  /**
-   * 上传文件到公网服务器
-   * @param file 要上传的文件
-   * @returns 公网可访问的 URL，如果失败则返回 null
-   */
-  const uploadFileToPublicServer = async (file: File): Promise<string | null> => {
+  const uploadFileToLangCore = async (file: File): Promise<UploadResponse> => {
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -168,207 +92,260 @@ const FileUpload: React.FC<FileUploadProps> = ({
       });
     
       if (!uploadResponse.ok) {
-        throw new Error(`上传文件到公网失败: ${uploadResponse.statusText}`);
+        throw new Error(`上传文件到LangCore失败: ${uploadResponse.statusText}`);
       }
       
       const uploadResult = await uploadResponse.json();
+      // console.log('📥 LangCore响应:', uploadResult);
       
-      if (uploadResult.data.fileId) {
-        return uploadResult.data.fileId;
+      // 检查LangCore响应格式：{"status":"success","data":{"fileId":"..."}}
+      if ((uploadResult.status === 'success' || uploadResult.success) && uploadResult.data && uploadResult.data.fileId) {
+        return uploadResult;
       } else {
-        throw new Error('公网服务器响应格式不正确');
+        throw new Error('LangCore服务器响应格式不正确');
       }
     } catch (error) {
-      console.error('上传文件到公网失败:', error);
-      return null;
+      console.error('上传文件到LangCore失败:', error);
+      throw error;
     }
   };
 
   /**
-   * 处理文件上传的核心逻辑
+   * 处理文件上传
    * @param file 要上传的文件
    */
   const handleFileUpload = async (file: File) => {
-    // 检查文件类型 - 扩展支持更多格式
-    const allowedTypes = [
-      'application/pdf', 
-      'application/msword', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'image/jpeg',
-      'image/jpg',
-      'image/png'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      const message = '不支持的文件格式，请上传 PDF 文件';
-      setUploadError(message);
-      onError?.(message);
+    // 验证文件
+    const typeError = FileUploadService.getFileTypeError(file);
+    if (typeError) {
+      onError(typeError);
       return;
     }
 
-    // 检查文件大小 (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      const message = '文件太大，请选择小于 10MB 的文件';
-      setUploadError(message);
-      onError?.(message);
+    const sizeError = FileUploadService.getFileSizeError(file);
+    if (sizeError) {
+      onError(sizeError);
       return;
     }
 
     setIsUploading(true);
     setUploadProgress(0);
-    setUploadError(null);
-
+    setUploadStatus('uploading');
+    
     try {
-      console.log('开始上传文件:', file.name, '大小:', (file.size / 1024 / 1024).toFixed(2) + 'MB');
-      
-      // 模拟上传进度
+      // console.log('🔄 开始上传文件:', file.name);
+
+      // 模拟进度更新
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
             clearInterval(progressInterval);
-            return 90;
+            return prev;
           }
           return prev + 10;
         });
       }, 200);
-      
-      // 先上传到本地服务器
-      const localResponse = await uploadFileToLocalServer(file);
 
-      // 再上传到公网服务器
-      const publicUrl = await uploadFileToPublicServer(file);
-      
+      // 上传到LangCore平台
+      const langCoreResponse = await uploadFileToLangCore(file);
+
       clearInterval(progressInterval);
       setUploadProgress(100);
 
-      console.log('文件上传完成:', {
-        fileId: localResponse.data.fileId,
-        localUrl: localResponse.data.url,
-        publicUrl: publicUrl
-      });
+      // 检查LangCore响应格式：{"status":"success","data":{"fileId":"..."}}
+      if ((langCoreResponse.status === 'success' || langCoreResponse.success) && langCoreResponse.data) {
+        // console.log('✅ 文件上传成功:', {
+        //   fileId: langCoreResponse.data.fileId,
+        //   url: langCoreResponse.data.url
+        // });
 
-      // 上传成功，通知父组件
-      setTimeout(() => {
-        setIsUploading(false);
+        setUploadStatus('success');
+        
+        // 调用成功回调
         onFileUploaded(file, {
-          fileId: localResponse.data!.fileId!,
-          url: localResponse.data!.url!,
-          publicUrl: publicUrl || ''
+          fileId: langCoreResponse.data.fileId!,
+          url: langCoreResponse.data.url!,
+          publicUrl: langCoreResponse.data.url
         });
-      }, 500);
-      
+
+        // 2秒后重置状态
+        setTimeout(() => {
+          setUploadStatus('idle');
+          setUploadProgress(0);
+        }, 2000);
+      } else {
+        throw new Error('上传响应格式不正确');
+      }
     } catch (error) {
-      console.error('文件上传失败:', error);
+      console.error('❌ 文件上传失败:', error);
+      setUploadStatus('error');
+      onError(error instanceof Error ? error.message : '文件上传失败');
+      
+      // 3秒后重置状态
+      setTimeout(() => {
+        setUploadStatus('idle');
+        setUploadProgress(0);
+      }, 3000);
+    } finally {
       setIsUploading(false);
-      setUploadProgress(0);
-      const errorMessage = error instanceof Error ? error.message : '上传失败，请重试';
-      setUploadError(errorMessage);
-      onError?.(errorMessage);
+    }
+  };
+
+  /**
+   * 处理拖放事件
+   */
+  const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      if (multipleMode && onFilesSelected) {
+        onFilesSelected(files);
+      } else {
+        handleFileUpload(files[0]);
+      }
+    }
+  }, [multipleMode, onFilesSelected]);
+
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  /**
+   * 获取上传状态的颜色
+   */
+  const getStatusColor = () => {
+    switch (uploadStatus) {
+      case 'uploading': return 'primary';
+      case 'success': return 'success';
+      case 'error': return 'danger';
+      default: return 'default';
+    }
+  };
+
+  /**
+   * 获取上传状态的图标
+   */
+  const getStatusIcon = () => {
+    switch (uploadStatus) {
+      case 'uploading': return 'lucide:loader-2';
+      case 'success': return 'lucide:check-circle';
+      case 'error': return 'lucide:x-circle';
+      default: return 'lucide:upload-cloud';
+    }
+  };
+
+  /**
+   * 获取上传状态的文本
+   */
+  const getStatusText = () => {
+    switch (uploadStatus) {
+      case 'uploading': return '正在上传...';
+      case 'success': return '上传成功!';
+      case 'error': return '上传失败';
+      default: return multipleMode ? '点击或拖拽文件到这里上传（支持多文件）' : '点击或拖拽文件到这里上传';
     }
   };
 
   return (
-    <Card className="flex-1 h-full rounded-md shadow-md bg-white">
-      <CardBody className="p-6 h-full flex flex-col">
-        <div className="flex justify-between items-center mb-6 flex-shrink-0">
-          <h2 className="text-xl font-bold text-primary flex items-center">
-            <Icon icon="lucide:upload" className="mr-2" aria-label="上传图标" />
-            {t.fileUpload}
-          </h2>
-        </div>
-
-        {!isUploading ? (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            {uploadError && (
-              <div className="w-full mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                              <div className="flex items-center">
-                <Icon icon="lucide:alert-circle" className="text-red-500 mr-2" aria-label="错误图标" />
-                <p className="text-red-700 text-sm">{uploadError}</p>
-              </div>
-              </div>
-            )}
-            
-            <div
-              className={`
-                w-full h-96 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer 
-                transition-all duration-300 ease-in-out transform
-                ${isDragOver 
-                  ? 'border-primary bg-primary/5 scale-105' 
-                  : 'border-gray-300 hover:border-primary hover:bg-primary/5 hover:scale-102'
-                }
-              `}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById('file-input')?.click()}
-              role="button"
-              tabIndex={0}
-              aria-label={multipleMode ? '多文件上传区域' : t.uploadArea}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  document.getElementById('file-input')?.click();
-                }
-              }}
-            >
+    <div className="w-full h-full flex items-center justify-center p-8">
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardBody className="p-8">
+          <div
+            className={`
+              border-2 border-dashed rounded-lg p-12 text-center transition-all duration-200 cursor-pointer
+              ${isDragging 
+                ? 'border-primary bg-primary/10 scale-105' 
+                : uploadStatus === 'success'
+                ? 'border-success bg-success/10'
+                : uploadStatus === 'error'
+                ? 'border-danger bg-danger/10'
+                : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+              }
+            `}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => document.getElementById('file-input')?.click()}
+            role="button"
+            tabIndex={0}
+            aria-label="文件上传区域，点击选择文件或拖拽文件到此处"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                document.getElementById('file-input')?.click();
+              }
+            }}
+          >
+            <div className="space-y-6">
               <Icon 
-                icon={multipleMode ? "lucide:files" : "lucide:cloud-upload"} 
-                className="text-6xl text-gray-400 mb-4" 
-                aria-label={multipleMode ? "多文件上传图标" : "单文件上传图标"}
+                icon={getStatusIcon()} 
+                className={`
+                  text-6xl mx-auto
+                  ${uploadStatus === 'uploading' ? 'animate-spin' : ''}
+                  ${uploadStatus === 'success' ? 'text-success' : ''}
+                  ${uploadStatus === 'error' ? 'text-danger' : ''}
+                  ${uploadStatus === 'idle' ? 'text-gray-400' : ''}
+                `}
+                aria-label={uploadStatus === 'uploading' ? '上传中图标' : '上传图标'}
               />
-              <p className="text-lg font-medium text-gray-700 mb-2">
-                {multipleMode ? '拖放多个文件到此处' : t.uploadArea}
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                {multipleMode ? '支持同时选择多个文件批量上传' : t.uploadInstruction}
-              </p>
-              <Button color="primary" variant="flat" size="lg" aria-label={multipleMode ? '选择多个文件' : t.selectFile}>
-                <Icon icon={multipleMode ? "lucide:folder-plus" : "lucide:file-plus"} className="mr-2" aria-label={multipleMode ? "文件夹图标" : "文件图标"} />
-                {multipleMode ? '选择多个文件' : t.selectFile}
-              </Button>
-            </div>
-
-            <input
-              id="file-input"
-              type="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-              multiple={multipleMode}
-              onChange={handleFileSelect}
-              className="hidden"
-              aria-label={multipleMode ? '选择多个文件' : t.selectFile}
-            />
-
-            <div className="mt-6 text-center flex-shrink-0">
-              <p className="text-sm text-gray-600 mb-2">支持格式: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG</p>
-              <p className="text-sm text-gray-500">
-                最大文件大小: 10MB {multipleMode ? '| 支持批量选择和上传' : ''}
-              </p>
-              {multipleMode && (
-                <p className="text-xs text-blue-600 mt-1">
-                  ✨ 多文件模式：选择文件后将加入上传队列，可批量处理
+              
+              <div className="space-y-2">
+                <h3 className="text-xl font-semibold text-gray-700">
+                  {getStatusText()}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  支持 PDF, DOC, DOCX, XLS, XLSX, JPG, PNG 格式，大小不超过 10MB
                 </p>
+              </div>
+
+              {isUploading && (
+                <div className="space-y-2">
+                  <Progress 
+                    value={uploadProgress} 
+                    color={getStatusColor() as any}
+                    className="w-full"
+                    aria-label="上传进度"
+                  />
+                  <p className="text-sm text-gray-600">{uploadProgress.toFixed(0)}%</p>
+                </div>
               )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <Icon icon="lucide:upload-cloud" className="text-6xl text-primary mb-4" aria-label="上传中图标" />
-            <h3 className="text-lg font-medium text-gray-700 mb-4">正在上传文件...</h3>
-            <div className="w-full max-w-md">
-              <Progress 
-                value={uploadProgress} 
-                className="mb-4"
-                color="primary"
-                showValueLabel={true}
+
+              <div className="flex gap-4 justify-center">
+                <Button
+                  color="primary"
+                  variant="flat"
+                  onPress={() => document.getElementById('file-input')?.click()}
+                  disabled={isUploading}
+                  className="flex items-center gap-2 rounded-lg"
+                  aria-label="选择文件"
+                >
+                  <Icon icon="lucide:folder-open" aria-label="文件夹图标" />
+                  选择文件
+                </Button>
+              </div>
+
+              <input
+                id="file-input"
+                type="file"
+                multiple={multipleMode}
+                onChange={handleFileSelect}
+                className="hidden"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                aria-label="文件选择输入"
               />
             </div>
-            <p className="text-sm text-gray-600">{uploadProgress}% 已完成</p>
           </div>
-        )}
-      </CardBody>
-    </Card>
+        </CardBody>
+      </Card>
+    </div>
   );
 };
 

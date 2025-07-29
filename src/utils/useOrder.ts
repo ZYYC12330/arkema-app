@@ -120,7 +120,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
     if (!fileId) return;
 
     const startTime = Date.now();
-    const MINIMUM_LOADING_TIME = 15000; // 15秒 - 可以调整这个值来设置动画时间
+    const MINIMUM_LOADING_TIME = 5000; // 5秒 - 可以调整这个值来设置动画时间
 
     setIsLoading(true);
     setLoadingProgress(0);
@@ -135,12 +135,12 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min((elapsed / MINIMUM_LOADING_TIME) * 100, 100);
       setLoadingProgress(progress);
-    }, 50); // 每50ms更新一次进度 - 可以调整这个值
+    }, 30); // 每30ms更新一次动画进度 - 可以调整这个值
 
     try {
       const basicInfo = await OrderService.extractBasicOrderInfo(fileId, fileName);
       setBasicOrderInfo(basicInfo);
-      
+      console.log('basicInfo', basicInfo);
       OrderService.saveOrderInfo(fileName, basicInfo, initialExtendedOrderInfo);
       
       const status: OrderStatus = {
@@ -237,7 +237,7 @@ export const useOrder = (currentFileName: string | null): UseOrderReturn => {
         ...extendedOrderInfo,
         phase: 'submitted',
         isSubmitted: true,
-        fileUrl: currentFileUrl || ''
+        fileName: currentFileName
       };
       
       const result = await OrderService.submitOrder(completeOrderInfo);
